@@ -35,7 +35,7 @@ def status():
     return jsonify({
         "status": "running",
         "mode": CONFIG.get("mode", "tornado"),
-        "threads": CONFIG.get("threads", 100),
+        "threads": CONFIG.get("threads", 200),
         "attack_running": CONFIG.get("attack_running", False),
         "total_snos": len(CONFIG.get("history", [])),
         "uptime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -51,7 +51,7 @@ def install(package):
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM SNOSER v18.0 - ROLE EDITION ☢️")
+    print("☢️ CYBERTEAM SNOSER v19.0 - MEGA EDITION ☢️")
     print("=" * 60)
     
     for module in required_modules:
@@ -78,10 +78,10 @@ from fake_useragent import UserAgent
 # КОНФИГ
 # ===================================================================
 CONFIG = {
-    "threads": 100,
-    "request_timeout": 10,
-    "delay_min": 0.1,
-    "delay_max": 0.3,
+    "threads": 200,
+    "request_timeout": 15,
+    "delay_min": 0.05,
+    "delay_max": 0.15,
     "mode": "tornado",
     "owner_password": "cyberteam2024",
     "bot_token": ТВОЙ_ТОКЕН,
@@ -96,7 +96,7 @@ CONFIG = {
     "awaiting_repeats": False,
     "temp_target": "",
     "temp_type": "account",
-    "user_roles": {}  # {chat_id: "owner" или "guest"}
+    "user_roles": {}
 }
 
 # ===================================================================
@@ -125,28 +125,118 @@ class Generators:
         return random.choice(agents)
 
 # ===================================================================
-# ТЕКСТЫ ДЛЯ СНОСА (СОКРАЩЕНО)
+# ТЕКСТЫ ДЛЯ СНОСА
 # ===================================================================
 class TextTemplates:
     @staticmethod
     def get_text(target_type, target, reason, link=""):
         texts = {
             "account": {
-                "spam": [f"Аккаунт {target} занимается МАССОВЫМ СПАМОМ! Прошу заблокировать!"],
-                "insult": [f"Аккаунт {target} ОСКОРБЛЯЕТ пользователей!"],
-                "scam": [f"Аккаунт {target} - МОШЕННИК! Обманул людей!"],
-                "illegal": [f"Аккаунт {target} распространяет НЕЛЕГАЛЬНЫЙ контент!"],
-                "fake": [f"Аккаунт {target} использует ВИРТУАЛЬНЫЙ НОМЕР!"],
-                "phishing": [f"Аккаунт {target} - ФИШИНГОВЫЙ! Крадет данные!"],
-                "doxxing": [f"Аккаунт {target} занимается ДОКСИНГОМ!"],
-                "terror": [f"Аккаунт {target} призывает к ТЕРРОРИЗМУ!"],
-                "drugs": [f"Аккаунт {target} продает НАРКОТИКИ!"],
-                "child_porn": [f"Аккаунт {target} распространяет ДЕТСКУЮ ПОРНОГРАФИЮ!"],
-                "violence": [f"Аккаунт {target} призывает к НАСИЛИЮ!"],
-                "hate": [f"Аккаунт {target} РАЗЖИГАЕТ НЕНАВИСТЬ!"],
-                "harassment": [f"Аккаунт {target} - ДОМОГАТЕЛЬ! Преследует людей!"],
-                "impersonation": [f"Аккаунт {target} - ПОДДЕЛЬНЫЙ!"],
-                "bot": [f"Аккаунт {target} - НЕЛЕГАЛЬНЫЙ БОТ!"]
+                "spam": [
+                    f"Аккаунт {target} занимается МАССОВЫМ СПАМОМ! Получаю по 30 сообщений в день! Прошу заблокировать!",
+                    f"{target} - СЕРИЙНЫЙ СПАМЕР! Рассылает рекламу криптовалют! Заблокируйте немедленно!",
+                    f"Пользователь {target} использует ботов для спам-рассылок! Отправил более 10000 сообщений!",
+                    f"Спам-ферма {target}! Каждый день новые жертвы! Это уже невыносимо!",
+                    f"Аккаунт {target} - СПАМ-МАШИНА! Заваливает всех рекламой 24/7!"
+                ],
+                "insult": [
+                    f"Аккаунт {target} ОСКОРБЛЯЕТ пользователей каждый день! Нецензурная брань и унижения!",
+                    f"{target} - АГРЕССОР! Оскорбляет всех в чатах без причины! Мы устали от него!",
+                    f"Пользователь {target} разжигает конфликты и оскорбляет каждого участника!",
+                    f"{target} написал оскорбления в мой адрес и угрожает расправой! Я боюсь!",
+                    f"Аккаунт {target} - ТРОЛЛЬ-АГРЕССОР! Оскорбляет людей за внешность и возраст!"
+                ],
+                "scam": [
+                    f"Аккаунт {target} - МОШЕННИК! Обманул уже 30 человек на крупные суммы!",
+                    f"{target} продает фейковые товары и исчезает с деньгами! Это скам!",
+                    f"Пользователь {target} - СКАМЕР! Предлагает легкий заработок, а крадет деньги!",
+                    f"{target} обманул меня на 10000 рублей! Обещал товар и исчез в никуда!",
+                    f"Аккаунт {target} занимается ФИШИНГОМ! Крадет данные карт и паролей!"
+                ],
+                "illegal": [
+                    f"Аккаунт {target} распространяет НЕЛЕГАЛЬНЫЙ контент! Нарушает закон РФ!",
+                    f"{target} продает НАРКОТИКИ! Статья 228.1 УК РФ! Срочно заблокировать!",
+                    f"Пользователь {target} публикует ЭКСТРЕМИСТСКИЕ материалы! Статья 282 УК РФ!",
+                    f"{target} распространяет ДЕТСКУЮ ПОРНОГРАФИЮ! Статья 242.1 УК РФ!",
+                    f"Аккаунт {target} призывает к ТЕРРОРИЗМУ! Статья 205.2 УК РФ!"
+                ],
+                "fake": [
+                    f"Аккаунт {target} использует ВИРТУАЛЬНЫЙ НОМЕР! Это фейковый аккаунт!",
+                    f"{target} зарегистрирован на одноразовый номер. Это мошенник 100%!",
+                    f"Аккаунт {target} - ФЕЙК! Нет реального пользователя за ним!",
+                    f"Пользователь {target} скрывает свой настоящий номер. Это подозрительно!",
+                    f"{target} использует номер с сайта активации. Такой аккаунт опасен!"
+                ],
+                "phishing": [
+                    f"Аккаунт {target} - ФИШИНГОВЫЙ! Крадет данные банковских карт!",
+                    f"{target} рассылает фишинговые ссылки! Это угроза безопасности!",
+                    f"Пользователь {target} создает поддельные сайты для кражи данных!",
+                    f"{target} - ВОР! Крадет аккаунты через фишинговые ссылки!",
+                    f"Аккаунт {target} используется для фишинговых атак на пользователей!"
+                ],
+                "doxxing": [
+                    f"Аккаунт {target} занимается ДОКСИНГОМ! Сливает личные данные людей!",
+                    f"{target} публикует паспортные данные, адреса и номера телефонов!",
+                    f"Пользователь {target} - ДОКСЕР! Угрожает людям через личные данные!",
+                    f"{target} сливает интимные фото без согласия! Это преступление!",
+                    f"Аккаунт {target} - ОПАСНЫЙ! Публикует личную информацию жертв!"
+                ],
+                "terror": [
+                    f"Аккаунт {target} призывает к ТЕРРОРИЗМУ! Статья 205.2 УК РФ!",
+                    f"{target} - ТЕРРОРИСТИЧЕСКИЙ аккаунт! Публикует инструкции по взрывчатке!",
+                    f"Пользователь {target} оправдывает терроризм и теракты!",
+                    f"{target} - ЭКСТРЕМИСТ! Призывает к свержению власти!",
+                    f"Аккаунт {target} публикует видео казней и пыток!"
+                ],
+                "drugs": [
+                    f"Аккаунт {target} продает НАРКОТИКИ! Статья 228.1 УК РФ!",
+                    f"{target} - НАРКО-ДИЛЕР! Торгует запрещенными веществами!",
+                    f"Пользователь {target} пропагандирует наркотики среди подростков!",
+                    f"{target} - НАРКО-ШОП! Продает спайсы, соли, героин!",
+                    f"Аккаунт {target} - ОПАСНОСТЬ! Рекламирует наркотики в открытую!"
+                ],
+                "child_porn": [
+                    f"Аккаунт {target} распространяет ДЕТСКУЮ ПОРНОГРАФИЮ! Статья 242.1 УК РФ!",
+                    f"{target} - ПЕДОФИЛ! Торгует фото и видео с детьми!",
+                    f"Пользователь {target} - ОПАСНЫЙ! Собирает и продает детские фото!",
+                    f"{target} - ПЕДО-СЕТЬ! Организует обмен детским порно!",
+                    f"Аккаунт {target} - УГРОЗА! Распространяет порно с младенцами!"
+                ],
+                "violence": [
+                    f"Аккаунт {target} призывает к НАСИЛИЮ! Статья 119 УК РФ!",
+                    f"{target} - АГРЕССОР! Призывает к избиению людей!",
+                    f"Пользователь {target} угрожает расправой оппонентам!",
+                    f"{target} - ОПАСНЫЙ! Организует нападения на людей!",
+                    f"Аккаунт {target} - УГРОЗА! Призывает к насильственным действиям!"
+                ],
+                "hate": [
+                    f"Аккаунт {target} РАЗЖИГАЕТ НЕНАВИСТЬ! Статья 282 УК РФ!",
+                    f"{target} - НАЦИСТ! Публикует расистские посты!",
+                    f"Пользователь {target} разжигает межнациональную рознь!",
+                    f"{target} - ФАШИСТ! Пропаганда превосходства нации!",
+                    f"Аккаунт {target} - НЕНАВИСТЬ! Оскорбляет религиозные чувства!"
+                ],
+                "harassment": [
+                    f"Аккаунт {target} - ДОМОГАТЕЛЬ! Преследует людей в чатах!",
+                    f"{target} - СТАЛКЕР! Следит за людьми и пишет угрозы!",
+                    f"Пользователь {target} - МАНЬЯК! Преследует девушек в личке!",
+                    f"{target} - ПРЕСЛЕДОВАТЕЛЬ! Не дает прохода людям!",
+                    f"Аккаунт {target} - СТАЛКЕР-МАНЬЯК! Угрожает физической расправой!"
+                ],
+                "impersonation": [
+                    f"Аккаунт {target} - ПОДДЕЛЬНЫЙ! Выдает себя за известную личность!",
+                    f"{target} - ФЕЙК! Притворяется сотрудником Telegram!",
+                    f"Пользователь {target} - САМОЗВАНЕЦ! Выдает себя за другого человека!",
+                    f"{target} - КЛОН! Копирует аккаунт известного блогера!",
+                    f"Аккаунт {target} - ПОДДЕЛКА! Использует чужое имя и фото!"
+                ],
+                "bot": [
+                    f"Аккаунт {target} - НЕЛЕГАЛЬНЫЙ БОТ! Нарушает правила Telegram!",
+                    f"{target} - БОТ-СПАМЕР! Отправляет тысячи сообщений!",
+                    f"Пользователь {target} - БОТ! Нет реального человека за аккаунтом!",
+                    f"{target} - АВТОМАТ! Работает по расписанию и спамит!",
+                    f"Аккаунт {target} - БОТ-МОШЕННИК! Автоматически обманывает людей!"
+                ]
             }
         }
         
@@ -161,7 +251,7 @@ class TextTemplates:
         return f"Жалоба на {target}"
 
 # ===================================================================
-# ДВИЖОК СНОСА
+# ДВИЖОК СНОСА (МЕГА-МОЩНЫЙ!)
 # ===================================================================
 class SnosEngine:
     
@@ -194,6 +284,7 @@ class SnosEngine:
         print(f"📋 ТИП: {target_type.upper()}")
         print(f"🔥 ПРИЧИНА: {reason.upper()}")
         print(f"🌊 ПОТОКОВ: {CONFIG['threads']}")
+        print(f"💥 ЖАЛОБ: {total:,}")
         
         def worker(index):
             nonlocal success, failed
@@ -208,8 +299,8 @@ class SnosEngine:
         with ThreadPoolExecutor(max_workers=CONFIG["threads"]) as executor:
             executor.map(worker, range(total))
         
-        print(f"✅ УСПЕШНО: {success}/{total}")
-        print(f"❌ ОШИБОК: {failed}/{total}")
+        print(f"✅ УСПЕШНО: {success:,}/{total:,}")
+        print(f"❌ ОШИБОК: {failed:,}/{total:,}")
         
         is_destroyed = success > total * 0.6
         CONFIG['attack_running'] = False
@@ -248,7 +339,7 @@ def send_telegram_message(chat_id, text, keyboard=None):
         pass
 
 # ===================================================================
-# КЛАВИАТУРЫ
+# КЛАВИАТУРЫ (С ДО 1.000.000!)
 # ===================================================================
 def role_menu():
     keyboard = [
@@ -312,7 +403,17 @@ def reason_menu(target_type, target):
             ("😡 Оскорбление", "insult"),
             ("💰 Мошенничество", "scam"),
             ("🚫 Нелегальный контент", "illegal"),
-            ("🎭 Фейк", "fake")
+            ("🎭 Фейк", "fake"),
+            ("🎣 Фишинг", "phishing"),
+            ("🔓 Доксинг", "doxxing"),
+            ("💣 Терроризм", "terror"),
+            ("💊 Наркотики", "drugs"),
+            ("🔞 Детское порно", "child_porn"),
+            ("⚔️ Насилие", "violence"),
+            ("👿 Ненависть", "hate"),
+            ("🕵️ Преследование", "harassment"),
+            ("🎭 Самозванство", "impersonation"),
+            ("🤖 Нелегальный бот", "bot")
         ]
     }
     keyboard = []
@@ -325,9 +426,13 @@ def repeats_menu(target_type, reason, target):
     keyboard = [
         [{"text": "💥 100", "callback_data": f"run_{target_type}_{reason}_{target}_100"}],
         [{"text": "💥 500", "callback_data": f"run_{target_type}_{reason}_{target}_500"}],
-        [{"text": "💥 1000", "callback_data": f"run_{target_type}_{reason}_{target}_1000"}],
-        [{"text": "💥 3000", "callback_data": f"run_{target_type}_{reason}_{target}_3000"}],
-        [{"text": "💥 5000", "callback_data": f"run_{target_type}_{reason}_{target}_5000"}],
+        [{"text": "💥 1.000", "callback_data": f"run_{target_type}_{reason}_{target}_1000"}],
+        [{"text": "💥 5.000", "callback_data": f"run_{target_type}_{reason}_{target}_5000"}],
+        [{"text": "💥 10.000", "callback_data": f"run_{target_type}_{reason}_{target}_10000"}],
+        [{"text": "💥 50.000", "callback_data": f"run_{target_type}_{reason}_{target}_50000"}],
+        [{"text": "💥 100.000", "callback_data": f"run_{target_type}_{reason}_{target}_100000"}],
+        [{"text": "💥 500.000", "callback_data": f"run_{target_type}_{reason}_{target}_500000"}],
+        [{"text": "🔥 1.000.000", "callback_data": f"run_{target_type}_{reason}_{target}_1000000"}],
         [{"text": "⬅️ НАЗАД", "callback_data": f"back_reason_{target_type}_{target}"}]
     ]
     return keyboard
@@ -336,6 +441,7 @@ def settings_menu(chat_id):
     keyboard = [
         [{"text": f"⚡ РЕЖИМ: {CONFIG['mode'].upper()}", "callback_data": "toggle_mode"}],
         [{"text": f"🌊 ПОТОКИ: {CONFIG['threads']}", "callback_data": "toggle_threads"}],
+        [{"text": f"⏱️ ЗАДЕРЖКА: {CONFIG['delay_min']}-{CONFIG['delay_max']}с", "callback_data": "toggle_delay"}],
         [{"text": "⬅️ НАЗАД", "callback_data": "back"}]
     ]
     return keyboard
@@ -347,7 +453,7 @@ def get_logs():
     logs = []
     for h in CONFIG['history'][-10:]:
         status = "✅ УНИЧТОЖЕН" if h.get('destroyed', False) else "❌ ВЫЖИЛ"
-        logs.append(f"{h['time']} | {h['target']} | {h['success']}/{h['total']} | {status}")
+        logs.append(f"{h['time']} | {h['target']} | {h['success']:,}/{h['total']:,} | {status}")
     
     if not logs:
         return "📋 <b>ЛОГИ ПУСТЫ</b>\n\nПока не было сносов."
@@ -364,35 +470,30 @@ def process_callback(chat_id, callback_data):
     parts = callback_data.split('_')
     role = CONFIG['user_roles'].get(chat_id, "guest")
     
-    # ВЫХОД
     if callback_data == "logout":
         if chat_id in CONFIG['user_roles']:
             del CONFIG['user_roles'][chat_id]
-        send_telegram_message(chat_id, "👋 <b>ВЫ ВЫШЛИ ИЗ СИСТЕМЫ</b>\n\nНажми /start для входа.")
+        send_telegram_message(chat_id, "👋 <b>ВЫ ВЫШЛИ</b>\n\nНажми /start для входа.")
         return
     
-    # ВЫБОР РОЛИ
     if callback_data == "role_owner":
-        send_telegram_message(chat_id, "👑 <b>ВВЕДИ ПАРОЛЬ ВЛАДЕЛЬЦА</b>")
+        send_telegram_message(chat_id, "👑 <b>ВВЕДИ ПАРОЛЬ</b>")
         CONFIG['awaiting_password'] = True
         CONFIG['awaiting_chat'] = chat_id
         return
     
     if callback_data == "role_guest":
         CONFIG['user_roles'][chat_id] = "guest"
-        msg = "👤 <b>ВЫ ВОШЛИ КАК ГОСТЬ</b>\n\nДоступны: Снос и Статистика"
-        send_telegram_message(chat_id, msg, guest_menu())
+        send_telegram_message(chat_id, "👤 <b>ВЫ ВОШЛИ КАК ГОСТЬ</b>", guest_menu())
         return
     
-    # ГЛАВНОЕ МЕНЮ
     if callback_data == "back":
         if role == "owner":
-            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>\n\nВыбери действие:", owner_menu())
+            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>", owner_menu())
         else:
-            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>\n\nВыбери действие:", guest_menu())
+            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>", guest_menu())
         return
     
-    # ПОМОЩЬ
     if callback_data == "help":
         msg = """
 📨 <b>ПОМОЩЬ</b>
@@ -402,24 +503,21 @@ def process_callback(chat_id, callback_data):
 /snos @user 500 - Быстрый снос
 /status - Статус
 /stop - Остановить
-/settings - Настройки (только владелец)
+/settings - Настройки (владелец)
 /history - История
-/logs - Логи (только владелец)
+/logs - Логи (владелец)
 
-<b>РОЛИ:</b>
-👑 ВЛАДЕЛЕЦ - полный доступ + логи
-👤 ГОСТЬ - только снос и статистика
+<b>ДО 1.000.000 ЖАЛОБ ЗА РАЗ!</b>
+🔥 Мега-режим для реальных задач!
         """
         keyboard = [[{"text": "⬅️ НАЗАД", "callback_data": "back"}]]
         send_telegram_message(chat_id, msg, keyboard)
         return
     
-    # СНОС
     if callback_data == "snos":
-        send_telegram_message(chat_id, "🎯 <b>ВЫБЕРИ ТИП ЦЕЛИ</b>", target_type_menu())
+        send_telegram_message(chat_id, "🎯 <b>ВЫБЕРИ ТИП</b>", target_type_menu())
         return
     
-    # СТАТИСТИКА (для всех)
     if callback_data == "stats":
         total = len(CONFIG['history'])
         destroyed = sum(1 for h in CONFIG['history'] if h.get('destroyed', False))
@@ -428,8 +526,8 @@ def process_callback(chat_id, callback_data):
         msg = f"""
 📊 <b>СТАТИСТИКА</b>
 
-📨 СНОСОВ: {total}
-💀 УНИЧТОЖЕНО: {destroyed}
+📨 СНОСОВ: {total:,}
+💀 УНИЧТОЖЕНО: {destroyed:,}
 🎯 УСПЕШНОСТЬ: {success_rate}%
 ⚡ РЕЖИМ: {CONFIG['mode'].upper()}
 🌊 ПОТОКОВ: {CONFIG['threads']}
@@ -438,7 +536,6 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, msg, keyboard)
         return
     
-    # ИСТОРИЯ (для всех)
     if callback_data == "history":
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📜 ИСТОРИЯ ПУСТА")
@@ -447,41 +544,34 @@ def process_callback(chat_id, callback_data):
         msg = "📜 <b>ПОСЛЕДНИЕ 10 СНОСОВ</b>\n\n"
         for i, h in enumerate(reversed(CONFIG['history'][-10:]), 1):
             status = "✅" if h.get('destroyed', False) else "❌"
-            msg += f"{i}. {h['target']} — {h['success']}/{h['total']} {status} [{h['time']}]\n"
+            msg += f"{i}. {h['target']} — {h['success']:,}/{h['total']:,} {status} [{h['time']}]\n"
         
         keyboard = [[{"text": "🔄 ОБНОВИТЬ", "callback_data": "history"}]]
         send_telegram_message(chat_id, msg, keyboard)
         return
     
-    # ЛОГИ (ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!)
     if callback_data == "logs":
         if role != "owner":
-            send_telegram_message(chat_id, "⛔ <b>ДОСТУП ЗАПРЕЩЕН</b>\n\nТолько для владельца!")
+            send_telegram_message(chat_id, "⛔ ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!")
             return
-        msg = get_logs()
-        keyboard = [[{"text": "🔄 ОБНОВИТЬ", "callback_data": "logs"}]]
-        send_telegram_message(chat_id, msg, keyboard)
+        send_telegram_message(chat_id, get_logs(), [[{"text": "🔄 ОБНОВИТЬ", "callback_data": "logs"}]])
         return
     
-    # НАСТРОЙКИ (ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!)
     if callback_data == "settings":
         if role != "owner":
-            send_telegram_message(chat_id, "⛔ <b>ДОСТУП ЗАПРЕЩЕН</b>\n\nТолько для владельца!")
+            send_telegram_message(chat_id, "⛔ ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!")
             return
         send_telegram_message(chat_id, "⚙️ <b>НАСТРОЙКИ</b>", settings_menu(chat_id))
         return
     
-    # СТОП (для всех)
     if callback_data == "stop":
         if CONFIG['attack_running']:
             CONFIG['attack_running'] = False
-            msg = "🛑 <b>СНОС ОСТАНОВЛЕН!</b>"
+            send_telegram_message(chat_id, "🛑 СНОС ОСТАНОВЛЕН!")
         else:
-            msg = "ℹ️ СНОС НЕ ЗАПУЩЕН"
-        send_telegram_message(chat_id, msg)
+            send_telegram_message(chat_id, "ℹ️ СНОС НЕ ЗАПУЩЕН")
         return
     
-    # НАСТРОЙКИ (только владелец)
     if callback_data == "toggle_mode":
         if role != "owner":
             send_telegram_message(chat_id, "⛔ Доступ запрещен!")
@@ -504,19 +594,28 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, f"✅ ПОТОКОВ: {CONFIG['threads']}", settings_menu(chat_id))
         return
     
-    # ОСТАЛЬНЫЕ CALLBACK (тип цели, причина, запуск)
+    if callback_data == "toggle_delay":
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ Доступ запрещен!")
+            return
+        delays = [(0.05, 0.15), (0.1, 0.3), (0.2, 0.5), (0.5, 1.0)]
+        current = (CONFIG['delay_min'], CONFIG['delay_max'])
+        next_idx = (delays.index(current) + 1) % len(delays) if current in delays else 0
+        CONFIG['delay_min'], CONFIG['delay_max'] = delays[next_idx]
+        send_telegram_message(chat_id, f"✅ ЗАДЕРЖКА: {CONFIG['delay_min']}-{CONFIG['delay_max']}с", settings_menu(chat_id))
+        return
+    
     if callback_data.startswith("type_"):
         target_type = callback_data.split('_')[1]
         CONFIG['temp_type'] = target_type
-        msg = f"🎯 <b>ВВЕДИ @USERNAME</b>\n\n📋 ТИП: {target_type.upper()}"
-        send_telegram_message(chat_id, msg)
+        send_telegram_message(chat_id, f"🎯 <b>ВВЕДИ @USERNAME</b>\n\n📋 ТИП: {target_type.upper()}")
         CONFIG['awaiting_target'] = True
         CONFIG['awaiting_chat'] = chat_id
         return
     
     if callback_data.startswith("back_type_"):
         target_type = callback_data.split('_')[2]
-        send_telegram_message(chat_id, "🎯 <b>ВЫБЕРИ ТИП ЦЕЛИ</b>", target_type_menu())
+        send_telegram_message(chat_id, "🎯 <b>ВЫБЕРИ ТИП</b>", target_type_menu())
         return
     
     if callback_data.startswith("reason_"):
@@ -531,14 +630,15 @@ def process_callback(chat_id, callback_data):
 👤 {target}
 📋 {target_type.upper()}
 🔥 {reason.upper()}
+
+<b>ДО 1.000.000 ЖАЛОБ!</b>
         """
         send_telegram_message(chat_id, msg, repeats_menu(target_type, reason, target))
         return
     
     if callback_data.startswith("back_reason_"):
         _, _, target_type, target = callback_data.split('_', 3)
-        msg = f"🎯 <b>ВЫБЕРИ ПРИЧИНУ</b>\n\n👤 {target}"
-        send_telegram_message(chat_id, msg, reason_menu(target_type, target))
+        send_telegram_message(chat_id, f"🎯 <b>ВЫБЕРИ ПРИЧИНУ</b>\n\n👤 {target}", reason_menu(target_type, target))
         return
     
     if callback_data.startswith("run_"):
@@ -561,7 +661,8 @@ def process_callback(chat_id, callback_data):
 👤 {target}
 📋 {target_type.upper()}
 🔥 {reason.upper()}
-💥 {repeats} ЖАЛОБ
+💥 {repeats:,} ЖАЛОБ
+🌊 {CONFIG['threads']} ПОТОКОВ
         """
         send_telegram_message(chat_id, msg)
         
@@ -578,28 +679,22 @@ def process_callback(chat_id, callback_data):
 def process_text(chat_id, text):
     text = text.strip()
     
-    # Обработка ввода пароля
     if CONFIG.get('awaiting_password', False) and CONFIG.get('awaiting_chat') == chat_id:
         CONFIG['awaiting_password'] = False
         if text == CONFIG['owner_password']:
             CONFIG['user_roles'][chat_id] = "owner"
-            msg = "👑 <b>ВЫ ВОШЛИ КАК ВЛАДЕЛЕЦ!</b>\n\nДоступны все функции + логи"
-            send_telegram_message(chat_id, msg, owner_menu())
+            send_telegram_message(chat_id, "👑 <b>ВЫ ВОШЛИ КАК ВЛАДЕЛЕЦ!</b>", owner_menu())
         else:
-            send_telegram_message(chat_id, "❌ <b>НЕВЕРНЫЙ ПАРОЛЬ!</b>\n\nПопробуйте снова или войдите как гость.", role_menu())
+            send_telegram_message(chat_id, "❌ <b>НЕВЕРНЫЙ ПАРОЛЬ!</b>", role_menu())
         return
     
-    # Обработка ввода цели
     if CONFIG.get('awaiting_target', False) and CONFIG.get('awaiting_chat') == chat_id:
         CONFIG['awaiting_target'] = False
         target = text
         target_type = CONFIG['temp_type']
-        
-        msg = f"🎯 <b>ВЫБЕРИ ПРИЧИНУ</b>\n\n👤 {target}\n📋 {target_type.upper()}"
-        send_telegram_message(chat_id, msg, reason_menu(target_type, target))
+        send_telegram_message(chat_id, f"🎯 <b>ВЫБЕРИ ПРИЧИНУ</b>\n\n👤 {target}\n📋 {target_type.upper()}", reason_menu(target_type, target))
         return
     
-    # КОМАНДЫ
     if text.startswith('/start'):
         role = CONFIG['user_roles'].get(chat_id)
         if role == "owner":
@@ -607,11 +702,9 @@ def process_text(chat_id, text):
         elif role == "guest":
             send_telegram_message(chat_id, "👤 <b>ДОБРО ПОЖАЛОВАТЬ, ГОСТЬ!</b>", guest_menu())
         else:
-            msg = "☢️ <b>CYBERTEAM SNOSER</b>\n\nВыберите роль для входа:"
-            send_telegram_message(chat_id, msg, role_menu())
+            send_telegram_message(chat_id, "☢️ <b>CYBERTEAM SNOSER</b>\n\nВыберите роль:", role_menu())
         return
     
-    # Быстрый снос (для всех)
     if text.startswith('/snos'):
         parts = text.split()
         if len(parts) >= 3:
@@ -623,7 +716,7 @@ def process_text(chat_id, text):
                     return
                 CONFIG['attack_running'] = True
                 CONFIG['current_target'] = target
-                send_telegram_message(chat_id, f"🎯 СНОС ЗАПУЩЕН!\n👤 {target}\n💥 {repeats}")
+                send_telegram_message(chat_id, f"🎯 СНОС ЗАПУЩЕН!\n👤 {target}\n💥 {repeats:,}")
                 def run():
                     SnosEngine.snos_target(target, "account", "spam", repeats, "")
                 thread = threading.Thread(target=run, daemon=True)
@@ -631,10 +724,9 @@ def process_text(chat_id, text):
             except:
                 send_telegram_message(chat_id, "❌ Ошибка: укажи число")
         else:
-            send_telegram_message(chat_id, "❌ Использование: /snos @username 500")
+            send_telegram_message(chat_id, "❌ /snos @username 500")
         return
     
-    # Статус (для всех)
     if text.startswith('/status'):
         status_text = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
         total = len(CONFIG['history'])
@@ -646,13 +738,12 @@ def process_text(chat_id, text):
 🎯 {CONFIG['current_target'] or '-'}
 ⚡ {CONFIG['threads']} потоков
 📋 {CONFIG['mode'].upper()}
-📨 СНОСОВ: {total}
-💀 УНИЧТОЖЕНО: {destroyed}
+📨 СНОСОВ: {total:,}
+💀 УНИЧТОЖЕНО: {destroyed:,}
         """
         send_telegram_message(chat_id, msg)
         return
     
-    # Стоп (для всех)
     if text.startswith('/stop'):
         if CONFIG['attack_running']:
             CONFIG['attack_running'] = False
@@ -661,7 +752,6 @@ def process_text(chat_id, text):
             send_telegram_message(chat_id, "ℹ️ СНОС НЕ ЗАПУЩЕН")
         return
     
-    # История (для всех)
     if text.startswith('/history'):
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📜 ИСТОРИЯ ПУСТА")
@@ -669,35 +759,33 @@ def process_text(chat_id, text):
         msg = "📜 <b>ПОСЛЕДНИЕ 10 СНОСОВ</b>\n\n"
         for i, h in enumerate(reversed(CONFIG['history'][-10:]), 1):
             status = "✅" if h.get('destroyed', False) else "❌"
-            msg += f"{i}. {h['target']} — {h['success']}/{h['total']} {status} [{h['time']}]\n"
+            msg += f"{i}. {h['target']} — {h['success']:,}/{h['total']:,} {status} [{h['time']}]\n"
         send_telegram_message(chat_id, msg)
         return
     
-    # Логи (только владелец)
     if text.startswith('/logs'):
         role = CONFIG['user_roles'].get(chat_id)
         if role != "owner":
-            send_telegram_message(chat_id, "⛔ ДОСТУП ЗАПРЕЩЕН! Только для владельца.")
+            send_telegram_message(chat_id, "⛔ ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!")
             return
         send_telegram_message(chat_id, get_logs())
         return
     
-    # Настройки (только владелец)
     if text.startswith('/settings'):
         role = CONFIG['user_roles'].get(chat_id)
         if role != "owner":
-            send_telegram_message(chat_id, "⛔ ДОСТУП ЗАПРЕЩЕН! Только для владельца.")
+            send_telegram_message(chat_id, "⛔ ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!")
             return
         send_telegram_message(chat_id, "⚙️ <b>НАСТРОЙКИ</b>", settings_menu(chat_id))
         return
     
-    send_telegram_message(chat_id, "❌ Неизвестная команда\n\n/help - список команд")
+    send_telegram_message(chat_id, "❌ Неизвестная команда\n\n/help - помощь")
 
 # ===================================================================
 # ПОЛЛИНГ БОТА
 # ===================================================================
 def polling_bot():
-    print("🤖 ЗАПУСК БОТА С РОЛЯМИ...")
+    print("🤖 ЗАПУСК МЕГА-БОТА (ДО 1.000.000 ЖАЛОБ!)")
     
     while True:
         try:
@@ -741,8 +829,8 @@ def polling_bot():
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    print("\n☢️ CYBERTEAM SNOSER v18.0 - ROLE EDITION")
-    print("👑 БОТ С РАЗДЕЛЕНИЕМ НА ВЛАДЕЛЬЦА И ГОСТЯ!")
+    print("\n☢️ CYBERTEAM SNOSER v19.0 - MEGA EDITION")
+    print("🔥 ДО 1.000.000 ЖАЛОБ ЗА РАЗ!")
     
     bot_thread = threading.Thread(target=polling_bot, daemon=True)
     bot_thread.start()

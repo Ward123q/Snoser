@@ -43,7 +43,7 @@ def status():
 # ===================================================================
 # УСТАНОВКА МОДУЛЕЙ
 # ===================================================================
-required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "flask", "python-telegram-bot"]
+required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "flask", "telegram"]
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
@@ -77,18 +77,6 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ===================================================================
-# ЦВЕТА
-# ===================================================================
-RESET = "\033[0m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-CYAN = "\033[36m"
-MAGENTA = "\033[35m"
-WHITE = "\033[37m"
-BOLD = "\033[1m"
-
-# ===================================================================
 # КОНФИГ
 # ===================================================================
 CONFIG = {
@@ -106,7 +94,7 @@ CONFIG = {
 }
 
 # ===================================================================
-# ГЕНЕРАТОРЫ И ТЕКСТЫ (СОКРАЩЕНО)
+# ГЕНЕРАТОРЫ
 # ===================================================================
 class Generators:
     @staticmethod
@@ -130,6 +118,9 @@ class Generators:
         ]
         return random.choice(agents)
 
+# ===================================================================
+# ТЕКСТЫ
+# ===================================================================
 class TextTemplates:
     @staticmethod
     def get_text(target_type, target, reason, link=""):
@@ -304,7 +295,7 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("ℹ️ СНОС НЕ ЗАПУЩЕН")
 
 # ===================================================================
-# ЗАПУСК БОТА (POLLING) В ОТДЕЛЬНОМ ПОТОКЕ
+# ЗАПУСК БОТА
 # ===================================================================
 def start_bot():
     """Запускает бота в режиме polling"""
@@ -318,8 +309,8 @@ def start_bot():
     application.add_handler(CommandHandler("stop", stop))
     
     print("✅ БОТ ГОТОВ К РАБОТЕ!")
+    print("📱 БОТ ЗАПУЩЕН! ЖДУ КОМАНД...")
     
-    # Запускаем polling
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 # ===================================================================

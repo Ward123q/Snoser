@@ -5,10 +5,11 @@ import random
 import string
 import threading
 import subprocess
+import re
 import json
-import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from flask import Flask, request, jsonify
 
 # ===================================================================
 # ТВОИ ДАННЫЕ
@@ -17,22 +18,39 @@ from concurrent.futures import ThreadPoolExecutor
 ТВОЙ_ID = 7823802800
 
 # ===================================================================
-# WEBHOOK НАСТРОЙКИ
+# FLASK APP (ДЛЯ RENDER KEEP-ALIVE)
 # ===================================================================
-# Эту переменную Render сам подставит как https://твой-сервис.onrender.com
-RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://cyberteam-snoser.onrender.com")
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "☢️ CYBERTEAM SNOSER RUNNING 24/7"
+
+@app.route('/health')
+def health():
+    return "OK"
+
+@app.route('/status')
+def status():
+    return jsonify({
+        "status": "running",
+        "mode": CONFIG.get("mode", "tornado"),
+        "threads": CONFIG.get("threads", 100),
+        "attack_running": CONFIG.get("attack_running", False),
+        "uptime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 # ===================================================================
 # УСТАНОВКА МОДУЛЕЙ
 # ===================================================================
-required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "uvicorn", "starlette"]
+required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "flask", "python-telegram-bot"]
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM SNOSER v17.0 - WEBHOOK EDITION ☢️")
+    print("☢️ CYBERTEAM SNOSER v17.0 - POLLING EDITION ☢️")
     print("=" * 60)
     
     for module in required_modules:
@@ -55,13 +73,8 @@ check_and_install_modules()
 import requests
 from fake_useragent import UserAgent
 from termcolor import colored
-import uvicorn
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import PlainTextResponse, Response, JSONResponse
-from starlette.routing import Route
 from telegram import Update
-from telegram.ext import Application, ContextTypes, MessageHandler, filters, CommandHandler
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ===================================================================
 # ЦВЕТА
@@ -93,7 +106,7 @@ CONFIG = {
 }
 
 # ===================================================================
-# ГЕНЕРАТОРЫ И ТЕКСТЫ (СОКРАЩЕНО ДЛЯ ОБЪЕМА)
+# ГЕНЕРАТОРЫ И ТЕКСТЫ (СОКРАЩЕНО)
 # ===================================================================
 class Generators:
     @staticmethod
@@ -161,14 +174,12 @@ class SnosEngine:
     
     @staticmethod
     def snos_target(target, target_type, reason, repeats, link=""):
-        mode = CONFIG["mode"]
         success = 0
         failed = 0
         lock = threading.Lock()
         total = repeats
         
         print(f"🎯 ЦЕЛЬ: {target}")
-        print(f"⚡ РЕЖИМ: {mode.upper()}")
         print(f"🌊 ПОТОКОВ: {CONFIG['threads']}")
         
         def worker(index):
@@ -205,11 +216,8 @@ class SnosEngine:
         return is_destroyed
 
 # ===================================================================
-# АСИНХРОННЫЙ БОТ (WEBHOOK)
+# ОБРАБОТЧИКИ КОМАНД БОТА
 # ===================================================================
-application = None
-
-# Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != CONFIG['owner_id']:
@@ -220,7 +228,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ☢️ <b>CYBERTEAM SNOSER</b>
 
 👑 ВЛАДЕЛЕЦ: WARD
-🤖 WEBHOOK РЕЖИМ (24/7)
+🤖 POLLING РЕЖИМ (24/7)
 
 <b>КОМАНДЫ:</b>
 /snos @username 500 - запустить снос
@@ -232,7 +240,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     await update.message.reply_text(msg, parse_mode="HTML")
 
-# Обработчик команды /snos
 async def snos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != CONFIG['owner_id']:
@@ -266,7 +273,6 @@ async def snos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
 
-# Обработчик команды /status
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != CONFIG['owner_id']:
@@ -285,7 +291,6 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     await update.message.reply_text(msg, parse_mode="HTML")
 
-# Обработчик команды /stop
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != CONFIG['owner_id']:
@@ -299,70 +304,35 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("ℹ️ СНОС НЕ ЗАПУЩЕН")
 
 # ===================================================================
-# СОЗДАНИЕ ПРИЛОЖЕНИЯ STARLETTE
+# ЗАПУСК БОТА (POLLING) В ОТДЕЛЬНОМ ПОТОКЕ
 # ===================================================================
-async def main():
-    global application
+def start_bot():
+    """Запускает бота в режиме polling"""
+    print("🤖 ЗАПУСК БОТА...")
     
-    # Создаем приложение Telegram
-    application = Application.builder().token(CONFIG['bot_token']).updater(None).build()
+    application = Application.builder().token(CONFIG['bot_token']).build()
     
-    # Регистрируем хендлеры
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("snos", snos))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("stop", stop))
     
-    # Устанавливаем webhook
-    webhook_url = f"{RENDER_URL}/telegram"
-    await application.bot.set_webhook(url=webhook_url, allowed_updates=Update.ALL_TYPES)
-    print(f"✅ Webhook установлен: {webhook_url}")
+    print("✅ БОТ ГОТОВ К РАБОТЕ!")
     
-    # Создаем Starlette приложение
-    async def telegram_webhook(request: Request) -> Response:
-        """Принимает обновления от Telegram"""
-        try:
-            data = await request.json()
-            update = Update.de_json(data, application.bot)
-            await application.process_update(update)
-            return Response(status_code=200)
-        except Exception as e:
-            print(f"Ошибка webhook: {e}")
-            return Response(status_code=500)
-    
-    async def health(request: Request) -> PlainTextResponse:
-        """Health check для Render"""
-        return PlainTextResponse(content="OK", status_code=200)
-    
-    async def root(request: Request) -> PlainTextResponse:
-        """Корневой путь"""
-        return PlainTextResponse(content="☢️ CYBERTEAM SNOSER RUNNING 24/7", status_code=200)
-    
-    starlette_app = Starlette(
-        routes=[
-            Route("/telegram", telegram_webhook, methods=["POST"]),
-            Route("/health", health, methods=["GET"]),
-            Route("/", root, methods=["GET"]),
-        ]
-    )
-    
-    # Запускаем веб-сервер
-    port = int(os.environ.get("PORT", 10000))
-    config = uvicorn.Config(starlette_app, host="0.0.0.0", port=port, log_level="info")
-    server = uvicorn.Server(config)
-    
-    await server.serve()
+    # Запускаем polling
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 # ===================================================================
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    try:
-        print("\n☢️ CYBERTEAM SNOSER - WEBHOOK EDITION")
-        print(f"🔗 URL: {RENDER_URL}")
-        print("🤖 Ожидание команд...\n")
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n🛑 Остановлено")
-    except Exception as e:
-        print(f"❌ Ошибка: {e}")
+    print("\n☢️ CYBERTEAM SNOSER - POLLING EDITION")
+    
+    # Запускаем бота в отдельном потоке
+    bot_thread = threading.Thread(target=start_bot, daemon=True)
+    bot_thread.start()
+    
+    # Запускаем Flask для Render Healthcheck
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 FLASK СЕРВЕР ЗАПУЩЕН НА ПОРТУ {port}")
+    app.run(host="0.0.0.0", port=port)

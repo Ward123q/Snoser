@@ -51,7 +51,7 @@ def install(package):
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM SNOSER v18.0 - PUBLIC BOT ☢️")
+    print("☢️ CYBERTEAM SNOSER v18.0 - ROLE EDITION ☢️")
     print("=" * 60)
     
     for module in required_modules:
@@ -95,7 +95,8 @@ CONFIG = {
     "awaiting_target": False,
     "awaiting_repeats": False,
     "temp_target": "",
-    "temp_type": "account"
+    "temp_type": "account",
+    "user_roles": {}  # {chat_id: "owner" или "guest"}
 }
 
 # ===================================================================
@@ -124,7 +125,7 @@ class Generators:
         return random.choice(agents)
 
 # ===================================================================
-# ТЕКСТЫ ДЛЯ СНОСА (СОКРАЩЕНО ДЛЯ ОБЪЕМА)
+# ТЕКСТЫ ДЛЯ СНОСА (СОКРАЩЕНО)
 # ===================================================================
 class TextTemplates:
     @staticmethod
@@ -144,7 +145,7 @@ class TextTemplates:
                 "violence": [f"Аккаунт {target} призывает к НАСИЛИЮ!"],
                 "hate": [f"Аккаунт {target} РАЗЖИГАЕТ НЕНАВИСТЬ!"],
                 "harassment": [f"Аккаунт {target} - ДОМОГАТЕЛЬ! Преследует людей!"],
-                "impersonation": [f"Аккаунт {target} - ПОДДЕЛЬНЫЙ! Выдает себя за другого!"],
+                "impersonation": [f"Аккаунт {target} - ПОДДЕЛЬНЫЙ!"],
                 "bot": [f"Аккаунт {target} - НЕЛЕГАЛЬНЫЙ БОТ!"]
             }
         }
@@ -249,7 +250,14 @@ def send_telegram_message(chat_id, text, keyboard=None):
 # ===================================================================
 # КЛАВИАТУРЫ
 # ===================================================================
-def main_menu():
+def role_menu():
+    keyboard = [
+        [{"text": "👑 ВЛАДЕЛЕЦ (нужен пароль)", "callback_data": "role_owner"}],
+        [{"text": "👤 ГОСТЬ (без пароля)", "callback_data": "role_guest"}]
+    ]
+    return keyboard
+
+def owner_menu():
     keyboard = [
         [
             {"text": "📱 СНОС", "callback_data": "snos"},
@@ -257,11 +265,28 @@ def main_menu():
         ],
         [
             {"text": "📜 ИСТОРИЯ", "callback_data": "history"},
-            {"text": "⚙️ НАСТРОЙКИ", "callback_data": "settings"}
+            {"text": "📋 ЛОГИ", "callback_data": "logs"}
         ],
         [
-            {"text": "🛑 СТОП", "callback_data": "stop"},
-            {"text": "📨 ПОМОЩЬ", "callback_data": "help"}
+            {"text": "⚙️ НАСТРОЙКИ", "callback_data": "settings"},
+            {"text": "🛑 СТОП", "callback_data": "stop"}
+        ],
+        [
+            {"text": "📨 ПОМОЩЬ", "callback_data": "help"},
+            {"text": "🚪 ВЫЙТИ", "callback_data": "logout"}
+        ]
+    ]
+    return keyboard
+
+def guest_menu():
+    keyboard = [
+        [
+            {"text": "📱 СНОС", "callback_data": "snos"},
+            {"text": "📊 СТАТИСТИКА", "callback_data": "stats"}
+        ],
+        [
+            {"text": "📨 ПОМОЩЬ", "callback_data": "help"},
+            {"text": "🚪 ВЫЙТИ", "callback_data": "logout"}
         ]
     ]
     return keyboard
@@ -316,42 +341,85 @@ def settings_menu(chat_id):
     return keyboard
 
 # ===================================================================
+# ЛОГИ
+# ===================================================================
+def get_logs():
+    logs = []
+    for h in CONFIG['history'][-10:]:
+        status = "✅ УНИЧТОЖЕН" if h.get('destroyed', False) else "❌ ВЫЖИЛ"
+        logs.append(f"{h['time']} | {h['target']} | {h['success']}/{h['total']} | {status}")
+    
+    if not logs:
+        return "📋 <b>ЛОГИ ПУСТЫ</b>\n\nПока не было сносов."
+    
+    msg = "📋 <b>ПОСЛЕДНИЕ 10 ЛОГОВ</b>\n\n"
+    for log in logs:
+        msg += f"• {log}\n"
+    return msg
+
+# ===================================================================
 # ОБРАБОТЧИК КНОПОК
 # ===================================================================
 def process_callback(chat_id, callback_data):
     parts = callback_data.split('_')
+    role = CONFIG['user_roles'].get(chat_id, "guest")
     
-    if callback_data == "back":
-        send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>\n\nВыбери действие:", main_menu())
+    # ВЫХОД
+    if callback_data == "logout":
+        if chat_id in CONFIG['user_roles']:
+            del CONFIG['user_roles'][chat_id]
+        send_telegram_message(chat_id, "👋 <b>ВЫ ВЫШЛИ ИЗ СИСТЕМЫ</b>\n\nНажми /start для входа.")
         return
     
+    # ВЫБОР РОЛИ
+    if callback_data == "role_owner":
+        send_telegram_message(chat_id, "👑 <b>ВВЕДИ ПАРОЛЬ ВЛАДЕЛЬЦА</b>")
+        CONFIG['awaiting_password'] = True
+        CONFIG['awaiting_chat'] = chat_id
+        return
+    
+    if callback_data == "role_guest":
+        CONFIG['user_roles'][chat_id] = "guest"
+        msg = "👤 <b>ВЫ ВОШЛИ КАК ГОСТЬ</b>\n\nДоступны: Снос и Статистика"
+        send_telegram_message(chat_id, msg, guest_menu())
+        return
+    
+    # ГЛАВНОЕ МЕНЮ
+    if callback_data == "back":
+        if role == "owner":
+            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>\n\nВыбери действие:", owner_menu())
+        else:
+            send_telegram_message(chat_id, "☢️ <b>ГЛАВНОЕ МЕНЮ</b>\n\nВыбери действие:", guest_menu())
+        return
+    
+    # ПОМОЩЬ
     if callback_data == "help":
         msg = """
 📨 <b>ПОМОЩЬ</b>
 
 <b>КОМАНДЫ:</b>
-/start - Главное меню
+/start - Вход в систему
 /snos @user 500 - Быстрый снос
 /status - Статус
 /stop - Остановить
-/settings - Настройки
+/settings - Настройки (только владелец)
 /history - История
+/logs - Логи (только владелец)
 
-<b>КАК ПОЛЬЗОВАТЬСЯ:</b>
-1. Нажми "СНОС"
-2. Выбери тип цели
-3. Введи @username
-4. Выбери причину
-5. Выбери количество жалоб
+<b>РОЛИ:</b>
+👑 ВЛАДЕЛЕЦ - полный доступ + логи
+👤 ГОСТЬ - только снос и статистика
         """
         keyboard = [[{"text": "⬅️ НАЗАД", "callback_data": "back"}]]
         send_telegram_message(chat_id, msg, keyboard)
         return
     
+    # СНОС
     if callback_data == "snos":
         send_telegram_message(chat_id, "🎯 <b>ВЫБЕРИ ТИП ЦЕЛИ</b>", target_type_menu())
         return
     
+    # СТАТИСТИКА (для всех)
     if callback_data == "stats":
         total = len(CONFIG['history'])
         destroyed = sum(1 for h in CONFIG['history'] if h.get('destroyed', False))
@@ -370,6 +438,7 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, msg, keyboard)
         return
     
+    # ИСТОРИЯ (для всех)
     if callback_data == "history":
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📜 ИСТОРИЯ ПУСТА")
@@ -384,10 +453,25 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, msg, keyboard)
         return
     
+    # ЛОГИ (ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!)
+    if callback_data == "logs":
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ <b>ДОСТУП ЗАПРЕЩЕН</b>\n\nТолько для владельца!")
+            return
+        msg = get_logs()
+        keyboard = [[{"text": "🔄 ОБНОВИТЬ", "callback_data": "logs"}]]
+        send_telegram_message(chat_id, msg, keyboard)
+        return
+    
+    # НАСТРОЙКИ (ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА!)
     if callback_data == "settings":
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ <b>ДОСТУП ЗАПРЕЩЕН</b>\n\nТолько для владельца!")
+            return
         send_telegram_message(chat_id, "⚙️ <b>НАСТРОЙКИ</b>", settings_menu(chat_id))
         return
     
+    # СТОП (для всех)
     if callback_data == "stop":
         if CONFIG['attack_running']:
             CONFIG['attack_running'] = False
@@ -397,7 +481,11 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, msg)
         return
     
+    # НАСТРОЙКИ (только владелец)
     if callback_data == "toggle_mode":
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ Доступ запрещен!")
+            return
         modes = ["normal", "spam", "tornado"]
         current = CONFIG['mode']
         next_mode = modes[(modes.index(current) + 1) % len(modes)]
@@ -406,6 +494,9 @@ def process_callback(chat_id, callback_data):
         return
     
     if callback_data == "toggle_threads":
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ Доступ запрещен!")
+            return
         options = [50, 100, 150, 200, 300, 500]
         current = CONFIG['threads']
         next_idx = (options.index(current) + 1) % len(options) if current in options else 0
@@ -413,6 +504,7 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, f"✅ ПОТОКОВ: {CONFIG['threads']}", settings_menu(chat_id))
         return
     
+    # ОСТАЛЬНЫЕ CALLBACK (тип цели, причина, запуск)
     if callback_data.startswith("type_"):
         target_type = callback_data.split('_')[1]
         CONFIG['temp_type'] = target_type
@@ -486,6 +578,18 @@ def process_callback(chat_id, callback_data):
 def process_text(chat_id, text):
     text = text.strip()
     
+    # Обработка ввода пароля
+    if CONFIG.get('awaiting_password', False) and CONFIG.get('awaiting_chat') == chat_id:
+        CONFIG['awaiting_password'] = False
+        if text == CONFIG['owner_password']:
+            CONFIG['user_roles'][chat_id] = "owner"
+            msg = "👑 <b>ВЫ ВОШЛИ КАК ВЛАДЕЛЕЦ!</b>\n\nДоступны все функции + логи"
+            send_telegram_message(chat_id, msg, owner_menu())
+        else:
+            send_telegram_message(chat_id, "❌ <b>НЕВЕРНЫЙ ПАРОЛЬ!</b>\n\nПопробуйте снова или войдите как гость.", role_menu())
+        return
+    
+    # Обработка ввода цели
     if CONFIG.get('awaiting_target', False) and CONFIG.get('awaiting_chat') == chat_id:
         CONFIG['awaiting_target'] = False
         target = text
@@ -495,10 +599,19 @@ def process_text(chat_id, text):
         send_telegram_message(chat_id, msg, reason_menu(target_type, target))
         return
     
+    # КОМАНДЫ
     if text.startswith('/start'):
-        send_telegram_message(chat_id, "☢️ <b>CYBERTEAM SNOSER</b>\n\nВыбери действие:", main_menu())
+        role = CONFIG['user_roles'].get(chat_id)
+        if role == "owner":
+            send_telegram_message(chat_id, "👑 <b>ДОБРО ПОЖАЛОВАТЬ, ВЛАДЕЛЕЦ!</b>", owner_menu())
+        elif role == "guest":
+            send_telegram_message(chat_id, "👤 <b>ДОБРО ПОЖАЛОВАТЬ, ГОСТЬ!</b>", guest_menu())
+        else:
+            msg = "☢️ <b>CYBERTEAM SNOSER</b>\n\nВыберите роль для входа:"
+            send_telegram_message(chat_id, msg, role_menu())
         return
     
+    # Быстрый снос (для всех)
     if text.startswith('/snos'):
         parts = text.split()
         if len(parts) >= 3:
@@ -521,6 +634,7 @@ def process_text(chat_id, text):
             send_telegram_message(chat_id, "❌ Использование: /snos @username 500")
         return
     
+    # Статус (для всех)
     if text.startswith('/status'):
         status_text = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
         total = len(CONFIG['history'])
@@ -538,6 +652,7 @@ def process_text(chat_id, text):
         send_telegram_message(chat_id, msg)
         return
     
+    # Стоп (для всех)
     if text.startswith('/stop'):
         if CONFIG['attack_running']:
             CONFIG['attack_running'] = False
@@ -546,10 +661,7 @@ def process_text(chat_id, text):
             send_telegram_message(chat_id, "ℹ️ СНОС НЕ ЗАПУЩЕН")
         return
     
-    if text.startswith('/settings'):
-        send_telegram_message(chat_id, "⚙️ <b>НАСТРОЙКИ</b>", settings_menu(chat_id))
-        return
-    
+    # История (для всех)
     if text.startswith('/history'):
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📜 ИСТОРИЯ ПУСТА")
@@ -561,19 +673,22 @@ def process_text(chat_id, text):
         send_telegram_message(chat_id, msg)
         return
     
-    if text.startswith('/help'):
-        msg = """
-📨 <b>КОМАНДЫ</b>
-
-/start - Главное меню
-/snos @user 500 - Снос
-/status - Статус
-/stop - Остановить
-/settings - Настройки
-/history - История
-/help - Помощь
-        """
-        send_telegram_message(chat_id, msg)
+    # Логи (только владелец)
+    if text.startswith('/logs'):
+        role = CONFIG['user_roles'].get(chat_id)
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ ДОСТУП ЗАПРЕЩЕН! Только для владельца.")
+            return
+        send_telegram_message(chat_id, get_logs())
+        return
+    
+    # Настройки (только владелец)
+    if text.startswith('/settings'):
+        role = CONFIG['user_roles'].get(chat_id)
+        if role != "owner":
+            send_telegram_message(chat_id, "⛔ ДОСТУП ЗАПРЕЩЕН! Только для владельца.")
+            return
+        send_telegram_message(chat_id, "⚙️ <b>НАСТРОЙКИ</b>", settings_menu(chat_id))
         return
     
     send_telegram_message(chat_id, "❌ Неизвестная команда\n\n/help - список команд")
@@ -582,7 +697,7 @@ def process_text(chat_id, text):
 # ПОЛЛИНГ БОТА
 # ===================================================================
 def polling_bot():
-    print("🤖 ЗАПУСК ПУБЛИЧНОГО БОТА...")
+    print("🤖 ЗАПУСК БОТА С РОЛЯМИ...")
     
     while True:
         try:
@@ -613,7 +728,6 @@ def polling_bot():
                         elif 'message' in update and 'text' in update['message']:
                             chat_id = update['message']['chat']['id']
                             text = update['message']['text']
-                            # Убираем проверку на owner_id — бот отвечает ВСЕМ!
                             process_text(chat_id, text)
             else:
                 print(f"⚠️ Ошибка: {response.status_code}")
@@ -627,8 +741,8 @@ def polling_bot():
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    print("\n☢️ CYBERTEAM SNOSER v18.0 - PUBLIC BOT")
-    print("🤖 БОТ ОТВЕЧАЕТ ВСЕМ ПОЛЬЗОВАТЕЛЯМ!")
+    print("\n☢️ CYBERTEAM SNOSER v18.0 - ROLE EDITION")
+    print("👑 БОТ С РАЗДЕЛЕНИЕМ НА ВЛАДЕЛЬЦА И ГОСТЯ!")
     
     bot_thread = threading.Thread(target=polling_bot, daemon=True)
     bot_thread.start()

@@ -703,4 +703,46 @@ def polling_bot():
             response = requests.get(url, params=params, timeout=35)
             
             if response.status_code == 200:
-                data =
+                data = response.json()
+                if data.get('ok') and data.get('result'):
+                    for update in data['result']:
+                        CONFIG['last_update_id'] = update['update_id']
+                        
+                        # Обработка callback_query (кнопки)
+                        if 'callback_query' in update:
+                            callback = update['callback_query']
+                            callback_data = callback['data']
+                            process_callback(callback_data)
+                            
+                            # Отвечаем на callback
+                            answer_url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/answerCallbackQuery"
+                            requests.post(answer_url, data={"callback_query_id": callback['id']})
+                        
+                        # Обработка текстовых сообщений
+                        elif 'message' in update and 'text' in update['message']:
+                            chat_id = update['message']['chat']['id']
+                            text = update['message']['text']
+                            if chat_id == CONFIG['owner_id']:
+                                process_text(text)
+            else:
+                print(f"⚠️ Ошибка: {response.status_code}")
+                
+        except Exception as e:
+            print(f"⚠️ Ошибка: {e}")
+        
+        time.sleep(1)
+
+# ===================================================================
+# ЗАПУСК
+# ===================================================================
+if __name__ == "__main__":
+    print("\n☢️ CYBERTEAM SNOSER v18.0 - ULTRA BOT")
+    
+    send_telegram_message("☢️ CYBERTEAM SNOSER v18.0 ЗАПУЩЕН 24/7!\n\n🤖 БОТ С КНОПКАМИ ГОТОВ К РАБОТЕ!")
+    
+    bot_thread = threading.Thread(target=polling_bot, daemon=True)
+    bot_thread.start()
+    
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 FLASK СЕРВЕР ЗАПУЩЕН НА ПОРТУ {port}")
+    app.run(host="0.0.0.0", port=port)

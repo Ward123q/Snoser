@@ -4,3 +4,6 @@ fake_useragent==1.5.1
 termcolor==2.4.0
 pyfiglet==1.0.2
 gunicorn==22.0.0
+uvicorn==0.30.6
+starlette==0.38.2
+python-telegram-bot==20.8

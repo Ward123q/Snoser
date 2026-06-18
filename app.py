@@ -5,11 +5,10 @@ import random
 import string
 import threading
 import subprocess
-import re
 import json
+import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, request, jsonify
 
 # ===================================================================
 # ТВОИ ДАННЫЕ
@@ -18,54 +17,35 @@ from flask import Flask, request, jsonify
 ТВОЙ_ID = 7823802800
 
 # ===================================================================
-# ФЛАСК СЕРВЕР (ДЛЯ RENDER KEEP-ALIVE)
+# WEBHOOK НАСТРОЙКИ
 # ===================================================================
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "☢️ CYBERTEAM SNOSER RUNNING 24/7"
-
-@app.route('/health')
-def health():
-    return "OK"
-
-@app.route('/status')
-def status():
-    return jsonify({
-        "status": "running",
-        "mode": CONFIG.get("mode", "tornado"),
-        "threads": CONFIG.get("threads", 200),
-        "attack_running": CONFIG.get("attack_running", False),
-        "uptime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
+# Эту переменную Render сам подставит как https://твой-сервис.onrender.com
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://cyberteam-snoser.onrender.com")
 
 # ===================================================================
 # УСТАНОВКА МОДУЛЕЙ
 # ===================================================================
-required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet"]
+required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "uvicorn", "starlette"]
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def check_and_install_modules():
-    print("\033[36m" + "=" * 60)
-    print("\033[31m" + "  ☢️ CYBERTEAM SNOSER v17.0 - RENDER EDITION ☢️")
-    print("\033[35m" + "  👑 ВЛАДЕЛЕЦ: WARD")
-    print("\033[35m" + "  🤖 РАБОТАЕТ 24/7 НА RENDER!")
-    print("\033[36m" + "=" * 60 + "\033[0m")
+    print("=" * 60)
+    print("☢️ CYBERTEAM SNOSER v17.0 - WEBHOOK EDITION ☢️")
+    print("=" * 60)
     
     for module in required_modules:
         try:
             __import__(module)
-            print(f"\033[32m  ✅ {module} уже установлен.\033[0m")
+            print(f"✅ {module} уже установлен.")
         except:
-            print(f"\033[33m  ⏳ Установка {module}...\033[0m")
+            print(f"⏳ Установка {module}...")
             install(module)
-            print(f"\033[32m  ✅ {module} установлен.\033[0m")
+            print(f"✅ {module} установлен.")
     
-    print("\033[36m" + "=" * 60 + "\033[0m")
-    print("\033[32m  ✅ ВСЕ ГОТОВО! ЗАПУСКАЕМ...\033[0m")
+    print("=" * 60)
+    print("✅ ВСЕ ГОТОВО! ЗАПУСКАЕМ...")
 
 check_and_install_modules()
 
@@ -75,7 +55,13 @@ check_and_install_modules()
 import requests
 from fake_useragent import UserAgent
 from termcolor import colored
-import pyfiglet
+import uvicorn
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse, Response, JSONResponse
+from starlette.routing import Route
+from telegram import Update
+from telegram.ext import Application, ContextTypes, MessageHandler, filters, CommandHandler
 
 # ===================================================================
 # ЦВЕТА
@@ -93,7 +79,7 @@ BOLD = "\033[1m"
 # КОНФИГ
 # ===================================================================
 CONFIG = {
-    "threads": 200,
+    "threads": 100,
     "request_timeout": 10,
     "delay_min": 0.1,
     "delay_max": 0.3,
@@ -107,7 +93,7 @@ CONFIG = {
 }
 
 # ===================================================================
-# ГЕНЕРАТОРЫ
+# ГЕНЕРАТОРЫ И ТЕКСТЫ (СОКРАЩЕНО ДЛЯ ОБЪЕМА)
 # ===================================================================
 class Generators:
     @staticmethod
@@ -131,40 +117,17 @@ class Generators:
         ]
         return random.choice(agents)
 
-# ===================================================================
-# ТЕКСТЫ ДЛЯ СНОСА
-# ===================================================================
 class TextTemplates:
     @staticmethod
     def get_text(target_type, target, reason, link=""):
-        texts = {
-            "account": {
-                "spam": [
-                    f"Аккаунт {target} занимается МАССОВЫМ СПАМОМ! Получаю по 30 сообщений в день! Прошу заблокировать!",
-                    f"{target} - СЕРИЙНЫЙ СПАМЕР! Рассылает рекламу криптовалют! Заблокируйте немедленно!",
-                    f"Пользователь {target} использует ботов для спам-рассылок! Отправил более 10000 сообщений!"
-                ],
-                "insult": [
-                    f"Аккаунт {target} ОСКОРБЛЯЕТ пользователей каждый день! Нецензурная брань и унижения!",
-                    f"{target} - АГРЕССОР! Оскорбляет всех в чатах без причины! Мы устали от него!"
-                ],
-                "scam": [
-                    f"Аккаунт {target} - МОШЕННИК! Обманул уже 30 человек на крупные суммы!",
-                    f"{target} продает фейковые товары и исчезает с деньгами! Это скам!"
-                ],
-                "illegal": [
-                    f"Аккаунт {target} распространяет НЕЛЕГАЛЬНЫЙ контент! Нарушает закон РФ!",
-                    f"{target} продает НАРКОТИКИ! Статья 228.1 УК РФ! Срочно заблокировать!"
-                ],
-                "fake": [
-                    f"Аккаунт {target} использует ВИРТУАЛЬНЫЙ НОМЕР! Это фейковый аккаунт!",
-                    f"{target} зарегистрирован на одноразовый номер. Это мошенник 100%!"
-                ]
-            }
-        }
-        
         if target_type == "account":
-            return random.choice(texts["account"].get(reason, texts["account"]["spam"]))
+            texts = {
+                "spam": [f"Аккаунт {target} занимается МАССОВЫМ СПАМОМ! Прошу заблокировать!"],
+                "insult": [f"Аккаунт {target} ОСКОРБЛЯЕТ пользователей!"],
+                "scam": [f"Аккаунт {target} - МОШЕННИК! Обманул людей!"],
+                "illegal": [f"Аккаунт {target} распространяет НЕЛЕГАЛЬНЫЙ контент!"]
+            }
+            return random.choice(texts.get(reason, texts["spam"]))
         elif target_type == "channel":
             return f"Канал {target} нарушает правила! {link} Срочно заблокировать!"
         elif target_type == "bot":
@@ -204,9 +167,9 @@ class SnosEngine:
         lock = threading.Lock()
         total = repeats
         
-        print(f"\033[35m  🎯 ЦЕЛЬ: {target}")
-        print(f"\033[35m  ⚡ РЕЖИМ: {mode.upper()}")
-        print(f"\033[35m  🌊 ПОТОКОВ: {CONFIG['threads']}")
+        print(f"🎯 ЦЕЛЬ: {target}")
+        print(f"⚡ РЕЖИМ: {mode.upper()}")
+        print(f"🌊 ПОТОКОВ: {CONFIG['threads']}")
         
         def worker(index):
             nonlocal success, failed
@@ -221,8 +184,8 @@ class SnosEngine:
         with ThreadPoolExecutor(max_workers=CONFIG["threads"]) as executor:
             executor.map(worker, range(total))
         
-        print(f"\033[32m  ✅ УСПЕШНО: {success}/{total}")
-        print(f"\033[31m  ❌ ОШИБОК: {failed}/{total}")
+        print(f"✅ УСПЕШНО: {success}/{total}")
+        print(f"❌ ОШИБОК: {failed}/{total}")
         
         is_destroyed = success > total * 0.6
         CONFIG['attack_running'] = False
@@ -242,114 +205,164 @@ class SnosEngine:
         return is_destroyed
 
 # ===================================================================
-# ТЕЛЕГРАМ БОТ
+# АСИНХРОННЫЙ БОТ (WEBHOOK)
 # ===================================================================
-class TelegramBot:
-    
-    @staticmethod
-    def send_message(message):
-        try:
-            url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/sendMessage"
-            data = {
-                "chat_id": CONFIG['owner_id'],
-                "text": message,
-                "parse_mode": "HTML"
-            }
-            requests.post(url, data=data, timeout=5)
-        except:
-            pass
+application = None
 
-# ===================================================================
-# ОБРАБОТЧИК КОМАНД БОТА
-# ===================================================================
-def process_command(text):
-    text = text.strip()
+# Обработчик команды /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != CONFIG['owner_id']:
+        await update.message.reply_text("⛔ Доступ запрещен. Только для владельца.")
+        return
     
-    if text.startswith('/snos'):
-        parts = text.split()
-        if len(parts) >= 3:
-            target = parts[1]
-            try:
-                repeats = int(parts[2])
-                if CONFIG['attack_running']:
-                    return "⚠️ СНОС УЖЕ ИДЕТ!"
-                CONFIG['attack_running'] = True
-                CONFIG['current_target'] = target
-                def run():
-                    SnosEngine.snos_target(target, "account", "spam", repeats, "")
-                threading.Thread(target=run, daemon=True).start()
-                return f"🎯 СНОС ЗАПУЩЕН! ЦЕЛЬ: {target}"
-            except:
-                return "❌ Ошибка: укажи число"
-        return "❌ /snos @username 500"
-    
-    elif text.startswith('/status'):
-        status = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
-        return f"📊 СТАТУС\n\n🌐 {status}\n🎯 {CONFIG['current_target']}\n⚡ {CONFIG['threads']} потоков"
-    
-    elif text.startswith('/stop'):
-        if CONFIG['attack_running']:
-            CONFIG['attack_running'] = False
-            return "🛑 СНОС ОСТАНОВЛЕН!"
-        return "ℹ️ СНОС НЕ ЗАПУЩЕН"
-    
-    elif text.startswith('/start'):
-        return """
-☢️ CYBERTEAM SNOSER
+    msg = """
+☢️ <b>CYBERTEAM SNOSER</b>
 
 👑 ВЛАДЕЛЕЦ: WARD
-🤖 РАБОТАЕТ 24/7
+🤖 WEBHOOK РЕЖИМ (24/7)
 
-/snos @username 500 - СНОС
-/status - СТАТУС
-/stop - ОСТАНОВИТЬ
+<b>КОМАНДЫ:</b>
+/snos @username 500 - запустить снос
+/status - статус сносера
+/stop - остановить снос
+
+<b>ПРИМЕР:</b>
+/snos @spamer 1000
 """
+    await update.message.reply_text(msg, parse_mode="HTML")
+
+# Обработчик команды /snos
+async def snos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != CONFIG['owner_id']:
+        await update.message.reply_text("⛔ Доступ запрещен.")
+        return
+    
+    args = context.args
+    if len(args) < 2:
+        await update.message.reply_text("❌ Использование: /snos @username количество\n\nПример: /snos @spamer 500")
+        return
+    
+    target = args[0]
+    try:
+        repeats = int(args[1])
+    except:
+        await update.message.reply_text("❌ Ошибка: укажи число")
+        return
+    
+    if CONFIG['attack_running']:
+        await update.message.reply_text("⚠️ СНОС УЖЕ ИДЕТ! Дождись завершения.")
+        return
+    
+    CONFIG['attack_running'] = True
+    CONFIG['current_target'] = target
+    
+    await update.message.reply_text(f"🎯 СНОС ЗАПУЩЕН!\n\n👤 ЦЕЛЬ: {target}\n💥 ЖАЛОБ: {repeats}")
+    
+    def run():
+        SnosEngine.snos_target(target, "account", "spam", repeats, "")
+    
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+# Обработчик команды /status
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != CONFIG['owner_id']:
+        await update.message.reply_text("⛔ Доступ запрещен.")
+        return
+    
+    status_text = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
+    msg = f"""
+📊 <b>СТАТУС СНОСЕРА</b>
+
+🌐 СОСТОЯНИЕ: {status_text}
+🎯 ЦЕЛЬ: {CONFIG['current_target'] or '-'}
+⚡ ПОТОКОВ: {CONFIG['threads']}
+📋 РЕЖИМ: {CONFIG['mode'].upper()}
+📨 ВСЕГО СНОСОВ: {len(CONFIG['history'])}
+    """
+    await update.message.reply_text(msg, parse_mode="HTML")
+
+# Обработчик команды /stop
+async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != CONFIG['owner_id']:
+        await update.message.reply_text("⛔ Доступ запрещен.")
+        return
+    
+    if CONFIG['attack_running']:
+        CONFIG['attack_running'] = False
+        await update.message.reply_text("🛑 СНОС ОСТАНОВЛЕН!")
     else:
-        return "❌ Неизвестная команда"
+        await update.message.reply_text("ℹ️ СНОС НЕ ЗАПУЩЕН")
 
 # ===================================================================
-# ЗАПУСК БОТА В ПОТОКЕ
+# СОЗДАНИЕ ПРИЛОЖЕНИЯ STARLETTE
 # ===================================================================
-def start_bot():
-    last_update_id = 0
+async def main():
+    global application
     
-    while True:
+    # Создаем приложение Telegram
+    application = Application.builder().token(CONFIG['bot_token']).updater(None).build()
+    
+    # Регистрируем хендлеры
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("snos", snos))
+    application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("stop", stop))
+    
+    # Устанавливаем webhook
+    webhook_url = f"{RENDER_URL}/telegram"
+    await application.bot.set_webhook(url=webhook_url, allowed_updates=Update.ALL_TYPES)
+    print(f"✅ Webhook установлен: {webhook_url}")
+    
+    # Создаем Starlette приложение
+    async def telegram_webhook(request: Request) -> Response:
+        """Принимает обновления от Telegram"""
         try:
-            url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/getUpdates"
-            params = {"offset": last_update_id + 1, "timeout": 30}
-            response = requests.get(url, params=params, timeout=35)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('ok') and data.get('result'):
-                    for update in data['result']:
-                        last_update_id = update['update_id']
-                        if 'message' in update and 'text' in update['message']:
-                            chat_id = update['message']['chat']['id']
-                            text = update['message']['text']
-                            if chat_id == CONFIG['owner_id']:
-                                reply = process_command(text)
-                                send_url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/sendMessage"
-                                send_data = {
-                                    "chat_id": chat_id,
-                                    "text": reply,
-                                    "parse_mode": "HTML"
-                                }
-                                requests.post(send_url, data=send_data)
-        except:
-            time.sleep(1)
+            data = await request.json()
+            update = Update.de_json(data, application.bot)
+            await application.process_update(update)
+            return Response(status_code=200)
+        except Exception as e:
+            print(f"Ошибка webhook: {e}")
+            return Response(status_code=500)
+    
+    async def health(request: Request) -> PlainTextResponse:
+        """Health check для Render"""
+        return PlainTextResponse(content="OK", status_code=200)
+    
+    async def root(request: Request) -> PlainTextResponse:
+        """Корневой путь"""
+        return PlainTextResponse(content="☢️ CYBERTEAM SNOSER RUNNING 24/7", status_code=200)
+    
+    starlette_app = Starlette(
+        routes=[
+            Route("/telegram", telegram_webhook, methods=["POST"]),
+            Route("/health", health, methods=["GET"]),
+            Route("/", root, methods=["GET"]),
+        ]
+    )
+    
+    # Запускаем веб-сервер
+    port = int(os.environ.get("PORT", 10000))
+    config = uvicorn.Config(starlette_app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    
+    await server.serve()
 
 # ===================================================================
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    # Запускаем бота в фоне
-    bot_thread = threading.Thread(target=start_bot, daemon=True)
-    bot_thread.start()
-    
-    # Уведомление в Telegram
-    TelegramBot.send_message("☢️ CYBERTEAM SNOSER ЗАПУЩЕН НА RENDER 24/7!")
-    
-    # Запускаем Flask сервер для Keep-Alive
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    try:
+        print("\n☢️ CYBERTEAM SNOSER - WEBHOOK EDITION")
+        print(f"🔗 URL: {RENDER_URL}")
+        print("🤖 Ожидание команд...\n")
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🛑 Остановлено")
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")

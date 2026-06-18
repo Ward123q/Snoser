@@ -18,7 +18,7 @@ from flask import Flask, request, jsonify
 ТВОЙ_ID = 7823802800
 
 # ===================================================================
-# FLASK APP (ДЛЯ RENDER KEEP-ALIVE)
+# FLASK APP
 # ===================================================================
 app = Flask(__name__)
 
@@ -41,16 +41,16 @@ def status():
     })
 
 # ===================================================================
-# УСТАНОВКА МОДУЛЕЙ
+# ПРОВЕРКА МОДУЛЕЙ
 # ===================================================================
-required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "flask", "telegram"]
+required_modules = ["requests", "fake_useragent", "termcolor", "pyfiglet", "flask"]
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM SNOSER v17.0 - POLLING EDITION ☢️")
+    print("☢️ CYBERTEAM SNOSER v17.0 - SYNC EDITION ☢️")
     print("=" * 60)
     
     for module in required_modules:
@@ -73,8 +73,6 @@ check_and_install_modules()
 import requests
 from fake_useragent import UserAgent
 from termcolor import colored
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ===================================================================
 # КОНФИГ
@@ -90,7 +88,8 @@ CONFIG = {
     "owner_id": ТВОЙ_ID,
     "attack_running": False,
     "current_target": "",
-    "history": []
+    "history": [],
+    "last_update_id": 0
 }
 
 # ===================================================================
@@ -207,19 +206,33 @@ class SnosEngine:
         return is_destroyed
 
 # ===================================================================
-# ОБРАБОТЧИКИ КОМАНД БОТА
+# ОТПРАВКА СООБЩЕНИЙ В TELEGRAM
 # ===================================================================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != CONFIG['owner_id']:
-        await update.message.reply_text("⛔ Доступ запрещен. Только для владельца.")
-        return
+def send_telegram_message(text):
+    """Отправляет сообщение в Telegram"""
+    try:
+        url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/sendMessage"
+        data = {
+            "chat_id": CONFIG['owner_id'],
+            "text": text,
+            "parse_mode": "HTML"
+        }
+        requests.post(url, data=data, timeout=5)
+    except:
+        pass
+
+# ===================================================================
+# ОБРАБОТЧИК КОМАНД (СИНХРОННЫЙ)
+# ===================================================================
+def process_command(text):
+    text = text.strip()
     
-    msg = """
+    if text.startswith('/start'):
+        return """
 ☢️ <b>CYBERTEAM SNOSER</b>
 
 👑 ВЛАДЕЛЕЦ: WARD
-🤖 POLLING РЕЖИМ (24/7)
+🤖 SYNCHRONOUS MODE (24/7)
 
 <b>КОМАНДЫ:</b>
 /snos @username 500 - запустить снос
@@ -229,49 +242,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <b>ПРИМЕР:</b>
 /snos @spamer 1000
 """
-    await update.message.reply_text(msg, parse_mode="HTML")
-
-async def snos(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != CONFIG['owner_id']:
-        await update.message.reply_text("⛔ Доступ запрещен.")
-        return
-    
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text("❌ Использование: /snos @username количество\n\nПример: /snos @spamer 500")
-        return
-    
-    target = args[0]
-    try:
-        repeats = int(args[1])
-    except:
-        await update.message.reply_text("❌ Ошибка: укажи число")
-        return
-    
-    if CONFIG['attack_running']:
-        await update.message.reply_text("⚠️ СНОС УЖЕ ИДЕТ! Дождись завершения.")
-        return
-    
-    CONFIG['attack_running'] = True
-    CONFIG['current_target'] = target
-    
-    await update.message.reply_text(f"🎯 СНОС ЗАПУЩЕН!\n\n👤 ЦЕЛЬ: {target}\n💥 ЖАЛОБ: {repeats}")
-    
-    def run():
-        SnosEngine.snos_target(target, "account", "spam", repeats, "")
-    
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
-
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != CONFIG['owner_id']:
-        await update.message.reply_text("⛔ Доступ запрещен.")
-        return
-    
-    status_text = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
-    msg = f"""
+    elif text.startswith('/snos'):
+        parts = text.split()
+        if len(parts) >= 3:
+            target = parts[1]
+            try:
+                repeats = int(parts[2])
+                if CONFIG['attack_running']:
+                    return "⚠️ СНОС УЖЕ ИДЕТ! Дождись завершения."
+                CONFIG['attack_running'] = True
+                CONFIG['current_target'] = target
+                
+                def run():
+                    SnosEngine.snos_target(target, "account", "spam", repeats, "")
+                
+                thread = threading.Thread(target=run, daemon=True)
+                thread.start()
+                return f"🎯 СНОС ЗАПУЩЕН!\n\n👤 ЦЕЛЬ: {target}\n💥 ЖАЛОБ: {repeats}"
+            except:
+                return "❌ Ошибка: укажи число"
+        return "❌ Использование: /snos @username количество"
+    elif text.startswith('/status'):
+        status_text = "🔴 ИДЕТ" if CONFIG['attack_running'] else "🟢 ОЖИДАНИЕ"
+        return f"""
 📊 <b>СТАТУС СНОСЕРА</b>
 
 🌐 СОСТОЯНИЕ: {status_text}
@@ -279,51 +272,68 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⚡ ПОТОКОВ: {CONFIG['threads']}
 📋 РЕЖИМ: {CONFIG['mode'].upper()}
 📨 ВСЕГО СНОСОВ: {len(CONFIG['history'])}
-    """
-    await update.message.reply_text(msg, parse_mode="HTML")
-
-async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != CONFIG['owner_id']:
-        await update.message.reply_text("⛔ Доступ запрещен.")
-        return
-    
-    if CONFIG['attack_running']:
-        CONFIG['attack_running'] = False
-        await update.message.reply_text("🛑 СНОС ОСТАНОВЛЕН!")
+"""
+    elif text.startswith('/stop'):
+        if CONFIG['attack_running']:
+            CONFIG['attack_running'] = False
+            return "🛑 СНОС ОСТАНОВЛЕН!"
+        return "ℹ️ СНОС НЕ ЗАПУЩЕН"
     else:
-        await update.message.reply_text("ℹ️ СНОС НЕ ЗАПУЩЕН")
+        return "❌ Неизвестная команда"
 
 # ===================================================================
-# ЗАПУСК БОТА
+# ПОЛЛИНГ БОТА (СИНХРОННЫЙ)
 # ===================================================================
-def start_bot():
-    """Запускает бота в режиме polling"""
-    print("🤖 ЗАПУСК БОТА...")
+def polling_bot():
+    """Поллинг бота без asyncio"""
+    print("🤖 ЗАПУСК СИНХРОННОГО БОТА...")
     
-    application = Application.builder().token(CONFIG['bot_token']).build()
-    
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("snos", snos))
-    application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("stop", stop))
-    
-    print("✅ БОТ ГОТОВ К РАБОТЕ!")
-    print("📱 БОТ ЗАПУЩЕН! ЖДУ КОМАНД...")
-    
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{CONFIG['bot_token']}/getUpdates"
+            params = {
+                "offset": CONFIG['last_update_id'] + 1,
+                "timeout": 30,
+                "allowed_updates": ["message"]
+            }
+            
+            response = requests.get(url, params=params, timeout=35)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok') and data.get('result'):
+                    for update in data['result']:
+                        CONFIG['last_update_id'] = update['update_id']
+                        
+                        if 'message' in update and 'text' in update['message']:
+                            chat_id = update['message']['chat']['id']
+                            text = update['message']['text']
+                            
+                            if chat_id == CONFIG['owner_id']:
+                                reply = process_command(text)
+                                send_telegram_message(reply)
+            else:
+                print(f"⚠️ Ошибка Telegram API: {response.status_code}")
+                
+        except Exception as e:
+            print(f"⚠️ Ошибка поллинга: {e}")
+        
+        time.sleep(1)
 
 # ===================================================================
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    print("\n☢️ CYBERTEAM SNOSER - POLLING EDITION")
+    print("\n☢️ CYBERTEAM SNOSER - SYNC EDITION")
     
-    # Запускаем бота в отдельном потоке
-    bot_thread = threading.Thread(target=start_bot, daemon=True)
+    # Отправляем уведомление о запуске
+    send_telegram_message("☢️ CYBERTEAM SNOSER ЗАПУЩЕН НА RENDER 24/7!")
+    
+    # Запускаем поллинг бота в отдельном потоке
+    bot_thread = threading.Thread(target=polling_bot, daemon=True)
     bot_thread.start()
     
-    # Запускаем Flask для Render Healthcheck
+    # Запускаем Flask
     port = int(os.environ.get("PORT", 10000))
     print(f"🌐 FLASK СЕРВЕР ЗАПУЩЕН НА ПОРТУ {port}")
     app.run(host="0.0.0.0", port=port)

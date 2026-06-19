@@ -5,7 +5,6 @@ import random
 import string
 import threading
 import subprocess
-import re
 import json
 import smtplib
 from datetime import datetime
@@ -21,18 +20,13 @@ from flask import Flask, request, jsonify
 ТВОЙ_ID = 7823802800
 
 # ===================================================================
-# API КЛЮЧ NVIDIA (ТВОЙ!)
-# ===================================================================
-NVIDIA_API_KEY = "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"
-
-# ===================================================================
 # FLASK APP
 # ===================================================================
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "☢️ CYBERTEAM AI SNOSER v21.0"
+    return "☢️ CYBERTEAM SNOSER v23.0 - MULTI CHANNEL"
 
 @app.route('/health')
 def health():
@@ -48,10 +42,10 @@ def install(package):
 
 def check_and_install_modules():
     print("=" * 60)
-    print("☢️ CYBERTEAM AI SNOSER v21.0 ☢️")
+    print("☢️ CYBERTEAM SNOSER v23.0 ☢️")
     print("=" * 60)
-    print("🧠 ИИ-АНАЛИЗ: NVIDIA NEMOTRON")
-    print("🔥 РЕЖИМ: ИНТЕЛЛЕКТУАЛЬНЫЙ СНОС")
+    print("🔥 МНОГОКАНАЛЬНЫЙ СНОС")
+    print("📱 ЧЕРЕЗ ФОРМУ + НОМЕРА + ПОЧТЫ")
     print("=" * 60)
     
     for module in required_modules:
@@ -78,10 +72,10 @@ from fake_useragent import UserAgent
 # КОНФИГ
 # ===================================================================
 CONFIG = {
-    "threads": 200,
+    "threads": 300,
     "request_timeout": 15,
-    "delay_min": 0.05,
-    "delay_max": 0.15,
+    "delay_min": 0.03,
+    "delay_max": 0.1,
     "mode": "tornado",
     "owner_password": "cyberteam2024",
     "bot_token": ТВОЙ_ТОКЕН,
@@ -91,119 +85,11 @@ CONFIG = {
     "history": [],
     "last_update_id": 0,
     "awaiting_target": False,
+    "awaiting_repeats": False,
     "awaiting_password": False,
     "awaiting_chat": None,
     "user_roles": {}
 }
-
-# ===================================================================
-# 🧠 ИИ-АНАЛИЗАТОР (NVIDIA NEMOTRON)
-# ===================================================================
-class AIAnalyzer:
-    
-    def __init__(self):
-        self.api_key = NVIDIA_API_KEY
-        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "nvidia/nemotron-3.5-content-safety:free"
-    
-    def analyze_text(self, text):
-        """
-        Анализирует текст через NVIDIA Nemotron
-        Возвращает: {safe: bool, violations: list, confidence: float}
-        """
-        if not text or len(text) < 10:
-            return {"safe": True, "violations": [], "confidence": 1.0}
-        
-        try:
-            # Ограничиваем текст для скорости
-            text = text[:5000]
-            
-            prompt = f"""Ты — модератор контента. Проанализируй текст и определи, нарушает ли он правила.
-
-Категории нарушений:
-1. hate - разжигание ненависти, расизм, ксенофобия
-2. harassment - домогательства, травля, угрозы
-3. violence - призывы к насилию, жестокость
-4. sexual - порнография, сексуальный контент
-5. illegal - наркотики, оружие, экстремизм, терроризм
-6. doxxing - личные данные (паспорта, адреса, номера)
-7. scam - мошенничество, фишинг, обман
-
-Ответь ТОЛЬКО JSON форматом:
-{{"safe": true/false, "violations": ["hate", "violence"], "confidence": 0.0-1.0, "reason": "краткое описание"}}
-
-Текст для анализа:
-{text}"""
-
-            response = requests.post(
-                self.api_url,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": "Ты модератор контента. Отвечай только JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.1
-                },
-                timeout=20
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                content = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
-                
-                # Парсим JSON из ответа
-                try:
-                    result = json.loads(content)
-                    return {
-                        "safe": result.get("safe", True),
-                        "violations": result.get("violations", []),
-                        "confidence": result.get("confidence", 0.5),
-                        "reason": result.get("reason", "")
-                    }
-                except:
-                    return {"safe": True, "violations": [], "confidence": 0.5, "reason": "Ошибка парсинга"}
-            else:
-                print(f"⚠️ ИИ ошибка: {response.status_code}")
-                return {"safe": True, "violations": [], "confidence": 0.5, "reason": "API ошибка"}
-                
-        except Exception as e:
-            print(f"⚠️ ИИ ошибка: {e}")
-            return {"safe": True, "violations": [], "confidence": 0.5, "reason": str(e)[:50]}
-    
-    def analyze_target(self, target, target_type="account"):
-        """Анализирует цель через ИИ"""
-        print(f"🧠 ИИ АНАЛИЗИРУЕТ: {target}")
-        
-        try:
-            # Скачиваем публичную страницу
-            url = f"https://t.me/{target.replace('@', '')}"
-            headers = {'User-Agent': Generators.user_agent()}
-            response = requests.get(url, headers=headers, timeout=15)
-            
-            if response.status_code != 200:
-                return {"violations": [], "safe": True, "error": "Страница недоступна"}
-            
-            html = response.text
-            
-            # Очищаем HTML от тегов
-            import re
-            clean_text = re.sub(r'<[^>]+>', ' ', html)
-            clean_text = re.sub(r'\s+', ' ', clean_text)
-            
-            # Анализируем через ИИ
-            result = self.analyze_text(clean_text)
-            
-            print(f"🧠 ИИ РЕЗУЛЬТАТ: safe={result['safe']}, violations={result['violations']}")
-            return result
-            
-        except Exception as e:
-            print(f"⚠️ Ошибка анализа: {e}")
-            return {"violations": [], "safe": True, "error": str(e)[:50]}
 
 # ===================================================================
 # ГЕНЕРАТОРЫ
@@ -231,66 +117,107 @@ class Generators:
         return random.choice(agents)
 
 # ===================================================================
-# ТЕКСТЫ ДЛЯ СНОСА (ОТ ИИ)
+# ТЕКСТЫ ДЛЯ СНОСА
 # ===================================================================
 class TextTemplates:
     
+    TEXTS = {
+        "spam": [
+            "Аккаунт {target} занимается МАССОВЫМ СПАМОМ! Получаю по 30 сообщений в день! Прошу заблокировать!",
+            "{target} - СЕРИЙНЫЙ СПАМЕР! Рассылает рекламу криптовалют! Заблокируйте немедленно!",
+        ],
+        "insult": [
+            "Аккаунт {target} ОСКОРБЛЯЕТ пользователей каждый день! Нецензурная брань и унижения!",
+            "{target} - АГРЕССОР! Оскорбляет всех в чатах без причины!",
+        ],
+        "scam": [
+            "Аккаунт {target} - МОШЕННИК! Обманул уже 30 человек на крупные суммы!",
+            "{target} продает фейковые товары и исчезает с деньгами!",
+        ],
+        "illegal": [
+            "Аккаунт {target} распространяет НЕЛЕГАЛЬНЫЙ контент! Нарушает закон РФ!",
+            "{target} продает НАРКОТИКИ! Статья 228.1 УК РФ!",
+        ],
+        "fake": [
+            "Аккаунт {target} использует ВИРТУАЛЬНЫЙ НОМЕР! Это фейковый аккаунт!",
+            "{target} зарегистрирован на одноразовый номер. Это мошенник 100%!",
+        ],
+        "doxxing": [
+            "Аккаунт {target} занимается ДОКСИНГОМ! Сливает личные данные людей!",
+            "{target} публикует паспортные данные, адреса и номера телефонов!",
+        ],
+        "terror": [
+            "Аккаунт {target} призывает к ТЕРРОРИЗМУ! Статья 205.2 УК РФ!",
+            "{target} - ТЕРРОРИСТИЧЕСКИЙ аккаунт! Публикует инструкции по взрывчатке!",
+        ],
+        "drugs": [
+            "Аккаунт {target} продает НАРКОТИКИ! Статья 228.1 УК РФ!",
+            "{target} - НАРКО-ДИЛЕР! Торгует запрещенными веществами!",
+        ],
+        "child_porn": [
+            "Аккаунт {target} распространяет ДЕТСКУЮ ПОРНОГРАФИЮ! Статья 242.1 УК РФ!",
+            "{target} - ПЕДОФИЛ! Торгует фото и видео с детьми!",
+        ],
+        "violence": [
+            "Аккаунт {target} призывает к НАСИЛИЮ! Статья 119 УК РФ!",
+            "{target} - АГРЕССОР! Призывает к избиению людей!",
+        ],
+        "hate": [
+            "Аккаунт {target} РАЗЖИГАЕТ НЕНАВИСТЬ! Статья 282 УК РФ!",
+            "{target} - НАЦИСТ! Публикует расистские посты!",
+        ],
+        "harassment": [
+            "Аккаунт {target} - ДОМОГАТЕЛЬ! Преследует людей в чатах!",
+            "{target} - СТАЛКЕР! Следит за людьми и пишет угрозы!",
+        ],
+        "impersonation": [
+            "Аккаунт {target} - ПОДДЕЛЬНЫЙ! Выдает себя за известную личность!",
+            "{target} - ФЕЙК! Притворяется сотрудником Telegram!",
+        ],
+        "bot": [
+            "Аккаунт {target} - НЕЛЕГАЛЬНЫЙ БОТ! Нарушает правила Telegram!",
+            "{target} - БОТ-СПАМЕР! Отправляет тысячи сообщений!",
+        ]
+    }
+    
+    REASON_LIST = [
+        ("💀 Спам", "spam"),
+        ("😡 Оскорбление", "insult"),
+        ("💰 Мошенничество", "scam"),
+        ("🚫 Нелегальный контент", "illegal"),
+        ("🎭 Фейк", "fake"),
+        ("🔓 Доксинг", "doxxing"),
+        ("💣 Терроризм", "terror"),
+        ("💊 Наркотики", "drugs"),
+        ("🔞 Детское порно", "child_porn"),
+        ("⚔️ Насилие", "violence"),
+        ("👿 Ненависть", "hate"),
+        ("🕵️ Преследование", "harassment"),
+        ("🎭 Самозванство", "impersonation"),
+        ("🤖 Нелегальный бот", "bot")
+    ]
+    
     @staticmethod
-    def get_text(target, reason, evidence=""):
-        templates = {
-            "hate": [
-                f"Аккаунт {target} РАЗЖИГАЕТ НЕНАВИСТЬ! Доказательства: {evidence}",
-                f"{target} - КСЕНОФОБ! Публикует расистские посты! {evidence}",
-            ],
-            "harassment": [
-                f"Аккаунт {target} ЗАНИМАЕТСЯ ТРАВЛЕЙ! Доказательства: {evidence}",
-                f"{target} - АГРЕССОР! Преследует и унижает людей! {evidence}",
-            ],
-            "violence": [
-                f"Аккаунт {target} ПРИЗЫВАЕТ К НАСИЛИЮ! Доказательства: {evidence}",
-                f"{target} - ОПАСНЫЙ! Призывает к жестокости! {evidence}",
-            ],
-            "sexual": [
-                f"Аккаунт {target} РАСПРОСТРАНЯЕТ ПОРНОГРАФИЮ! {evidence}",
-                f"{target} - ПОРНО-АККАУНТ! Нарушает правила! {evidence}",
-            ],
-            "illegal": [
-                f"Аккаунт {target} - НЕЛЕГАЛЬНЫЙ! Нарушает закон! {evidence}",
-                f"{target} продает НАРКОТИКИ/ОРУЖИЕ! {evidence}",
-            ],
-            "doxxing": [
-                f"Аккаунт {target} - ДОКСИНГ! Сливает личные данные! {evidence}",
-                f"{target} публикует паспортные данные без согласия! {evidence}",
-            ],
-            "scam": [
-                f"Аккаунт {target} - МОШЕННИК! Обманывает людей! {evidence}",
-                f"{target} - СКАМЕР! Крадет деньги и данные! {evidence}",
-            ],
-            "spam": [
-                f"Аккаунт {target} - СПАМЕР! Массовые рассылки! {evidence}",
-                f"{target} заваливает всех рекламой! {evidence}",
-            ]
-        }
-        
-        if reason in templates:
-            return random.choice(templates[reason])
-        return f"Аккаунт {target} нарушает правила! {evidence}"
+    def get_text(target, reason):
+        texts = TextTemplates.TEXTS.get(reason, TextTemplates.TEXTS["spam"])
+        return random.choice(texts).format(target=target)
+    
+    @staticmethod
+    def get_reason_menu():
+        keyboard = []
+        for label, value in TextTemplates.REASON_LIST:
+            keyboard.append([{"text": label, "callback_data": f"reason_{value}"}])
+        keyboard.append([{"text": "⬅️ НАЗАД", "callback_data": "back"}])
+        return keyboard
 
 # ===================================================================
-# ОСНОВНОЙ ДВИЖОК СНОСА
+# 💥 МНОГОКАНАЛЬНЫЙ СНОС
 # ===================================================================
-class SnosEngine:
-    
-    ai = AIAnalyzer()
+class MultiChannelSnos:
     
     @staticmethod
-    def send_complaint(target, reason, evidence=""):
-        text = TextTemplates.get_text(target, reason, evidence)
-        text += f" {Generators.user_agent()[:15]}"
-        
-        phone = Generators.phone()
-        email = Generators.email()
-        
+    def send_via_form(target, reason, phone, email, text):
+        """Отправка через форму поддержки"""
         url = 'https://telegram.org/support'
         data = {'text': text, 'number': phone, 'email': email}
         headers = {'User-Agent': Generators.user_agent()}
@@ -298,72 +225,85 @@ class SnosEngine:
         try:
             response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
             return response.status_code == 200, response.status_code
-        except Exception as e:
-            return False, str(e)[:30]
+        except:
+            return False, "Error"
     
     @staticmethod
-    def smart_snos_target(target, target_type, repeats):
-        """УМНЫЙ СНОС С ИИ-АНАЛИЗОМ"""
-        print("\n" + "=" * 60)
-        print("🧠 УМНЫЙ СНОС С ИИ ЗАПУЩЕН!")
-        
-        # ШАГ 1: ИИ-АНАЛИЗ ЦЕЛИ
-        ai_result = SnosEngine.ai.analyze_target(target, target_type)
-        
-        if ai_result.get("safe", True):
-            print("❌ ИИ НЕ НАШЕЛ НАРУШЕНИЙ!")
-            print("💡 СНОС БЕССМЫСЛЕН")
-            
-            # Отправляем уведомление в бот
-            msg = f"""
-🧠 ИИ-АНАЛИЗ ЦЕЛИ: {target}
-
-❌ НАРУШЕНИЙ НЕ НАЙДЕНО!
-💡 СНОС БЕССМЫСЛЕН
-🔒 РЕКОМЕНДАЦИЯ: ПРОПУСТИТЬ
-            """
-            send_telegram_message(CONFIG['owner_id'], msg)
-            return False
-        
-        violations = ai_result.get("violations", [])
-        confidence = ai_result.get("confidence", 0)
-        reason_text = ai_result.get("reason", "Нарушение правил")
-        
-        print(f"🧠 ИИ НАШЕЛ НАРУШЕНИЯ: {violations}")
-        print(f"📊 УВЕРЕННОСТЬ: {confidence*100:.1f}%")
-        print(f"📋 ПРИЧИНА: {reason_text}")
-        
-        # ШАГ 2: Выбираем причину
-        reason_map = {
-            "hate": "hate",
-            "harassment": "harassment",
-            "violence": "violence",
-            "sexual": "sexual",
-            "illegal": "illegal",
-            "doxxing": "doxxing",
-            "scam": "scam"
-        }
-        
-        # Берем первую найденную причину или "scam" по умолчанию
-        reason = "scam"
-        for v in violations:
-            if v in reason_map:
-                reason = reason_map[v]
-                break
-        
-        print(f"🎯 ВЫБРАНА ПРИЧИНА: {reason.upper()}")
-        
-        # ШАГ 3: Отправляем жалобы
+    def send_via_phone(target, reason, phone, text):
+        """Отправка через номер телефона (имитация)"""
+        try:
+            # Формируем запрос через API
+            url = 'https://telegram.org/support'
+            data = {
+                'text': text,
+                'number': phone,
+                'email': f"user{random.randint(1,999)}@mail.ru"
+            }
+            headers = {'User-Agent': Generators.user_agent()}
+            response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
+            return response.status_code == 200, response.status_code
+        except:
+            return False, "Error"
+    
+    @staticmethod
+    def send_via_email(target, reason, email, text):
+        """Отправка через почту (имитация)"""
+        try:
+            url = 'https://telegram.org/support'
+            data = {
+                'text': text,
+                'number': f"+7{random.randint(1000000000, 9999999999)}",
+                'email': email
+            }
+            headers = {'User-Agent': Generators.user_agent()}
+            response = requests.post(url, headers=headers, data=data, timeout=CONFIG["request_timeout"])
+            return response.status_code == 200, response.status_code
+        except:
+            return False, "Error"
+    
+    @staticmethod
+    def multi_snos(target, reason, repeats, method="all"):
+        """
+        Многоканальный снос
+        method: "form" - только форма, "phone" - только номера, "email" - только почты, "all" - все вместе
+        """
         success = 0
         failed = 0
         lock = threading.Lock()
         total = repeats
         
-        print(f"\n🌊 ЗАПУСК МАССОВЫХ ЖАЛОБ: {total} шт.")
+        print(f"\n🎯 ЦЕЛЬ: {target}")
+        print(f"🔥 ПРИЧИНА: {reason.upper()}")
+        print(f"📡 МЕТОД: {method.upper()}")
+        print(f"💥 ЖАЛОБ: {total:,}")
+        print(f"🌊 ПОТОКОВ: {CONFIG['threads']}")
+        
+        text = TextTemplates.get_text(target, reason)
+        text += f" {Generators.user_agent()[:15]}"
         
         def worker(index):
             nonlocal success, failed
-            result, error = SnosEngine.send_complaint(target, reason, reason_text)
+            
+            phone = Generators.phone()
+            email = Generators.email()
+            
+            if method == "form" or method == "all":
+                result, _ = MultiChannelSnos.send_via_form(target, reason, phone, email, text)
+            elif method == "phone":
+                result, _ = MultiChannelSnos.send_via_phone(target, reason, phone, text)
+            elif method == "email":
+                result, _ = MultiChannelSnos.send_via_email(target, reason, email, text)
+            else:
+                # Случайный метод
+                methods = ["form", "phone", "email"]
+                chosen = random.choice(methods)
+                if chosen == "form":
+                    result, _ = MultiChannelSnos.send_via_form(target, reason, phone, email, text)
+                elif chosen == "phone":
+                    result, _ = MultiChannelSnos.send_via_phone(target, reason, phone, text)
+                else:
+                    result, _ = MultiChannelSnos.send_via_email(target, reason, email, text)
+            
             with lock:
                 if result:
                     success += 1
@@ -374,17 +314,15 @@ class SnosEngine:
         with ThreadPoolExecutor(max_workers=CONFIG["threads"]) as executor:
             executor.map(worker, range(total))
         
-        print(f"✅ УСПЕШНО: {success}/{total}")
-        print(f"❌ ОШИБОК: {failed}/{total}")
+        print(f"✅ УСПЕШНО: {success:,}/{total:,}")
+        print(f"❌ ОШИБОК: {failed:,}/{total:,}")
         
         is_destroyed = success > total * 0.6
         
         CONFIG['history'].append({
             'target': target,
-            'type': target_type,
             'reason': reason,
-            'ai_confidence': confidence,
-            'ai_violations': violations,
+            'method': method,
             'success': success,
             'total': total,
             'destroyed': is_destroyed,
@@ -393,18 +331,6 @@ class SnosEngine:
         
         CONFIG['attack_running'] = False
         CONFIG['current_target'] = ""
-        
-        # Отправляем отчет в Telegram
-        msg = f"""
-🧠 <b>ИИ-СНОС ЗАВЕРШЕН</b>
-
-🎯 ЦЕЛЬ: {target}
-🔥 ПРИЧИНА: {reason.upper()}
-📊 УВЕРЕННОСТЬ ИИ: {confidence*100:.1f}%
-📨 ЖАЛОБ: {success}/{total}
-💀 СТАТУС: {"✅ УНИЧТОЖЕН" if is_destroyed else "❌ ВЫЖИЛ"}
-        """
-        send_telegram_message(CONFIG['owner_id'], msg)
         
         return is_destroyed
 
@@ -438,7 +364,7 @@ def role_menu():
 def main_menu(role):
     if role == "owner":
         return [
-            [{"text": "🧠 СНОС С ИИ", "callback_data": "ai_snos"}],
+            [{"text": "💥 СНОС", "callback_data": "snos"}],
             [{"text": "📊 СТАТИСТИКА", "callback_data": "stats"},
              {"text": "📜 ИСТОРИЯ", "callback_data": "history"}],
             [{"text": "📋 ЛОГИ", "callback_data": "logs"},
@@ -448,20 +374,30 @@ def main_menu(role):
         ]
     else:
         return [
-            [{"text": "🧠 СНОС С ИИ", "callback_data": "ai_snos"}],
+            [{"text": "💥 СНОС", "callback_data": "snos"}],
             [{"text": "📊 СТАТИСТИКА", "callback_data": "stats"},
              {"text": "📜 ИСТОРИЯ", "callback_data": "history"}],
             [{"text": "🚪 ВЫЙТИ", "callback_data": "logout"}]
         ]
 
-def repeats_menu(target):
+def method_menu(target, reason):
     return [
-        [{"text": "💥 100", "callback_data": f"run_{target}_100"}],
-        [{"text": "💥 500", "callback_data": f"run_{target}_500"}],
-        [{"text": "💥 1.000", "callback_data": f"run_{target}_1000"}],
-        [{"text": "💥 5.000", "callback_data": f"run_{target}_5000"}],
-        [{"text": "🔥 10.000", "callback_data": f"run_{target}_10000"}],
+        [{"text": "🌐 ВСЕ МЕТОДЫ", "callback_data": f"method_all_{target}_{reason}"}],
+        [{"text": "📝 ТОЛЬКО ФОРМА", "callback_data": f"method_form_{target}_{reason}"}],
+        [{"text": "📱 ТОЛЬКО НОМЕРА", "callback_data": f"method_phone_{target}_{reason}"}],
+        [{"text": "✉️ ТОЛЬКО ПОЧТЫ", "callback_data": f"method_email_{target}_{reason}"}],
         [{"text": "⬅️ НАЗАД", "callback_data": "back"}]
+    ]
+
+def repeats_menu(target, reason, method):
+    return [
+        [{"text": "💥 100", "callback_data": f"run_{target}_{reason}_{method}_100"}],
+        [{"text": "💥 500", "callback_data": f"run_{target}_{reason}_{method}_500"}],
+        [{"text": "💥 1.000", "callback_data": f"run_{target}_{reason}_{method}_1000"}],
+        [{"text": "💥 5.000", "callback_data": f"run_{target}_{reason}_{method}_5000"}],
+        [{"text": "💥 10.000", "callback_data": f"run_{target}_{reason}_{method}_10000"}],
+        [{"text": "🔥 50.000", "callback_data": f"run_{target}_{reason}_{method}_50000"}],
+        [{"text": "⬅️ НАЗАД", "callback_data": f"back_method_{target}_{reason}"}]
     ]
 
 def settings_menu():
@@ -497,10 +433,29 @@ def process_callback(chat_id, callback_data):
         send_telegram_message(chat_id, "☢️ ГЛАВНОЕ МЕНЮ", main_menu(role))
         return
     
-    if callback_data == "ai_snos":
-        send_telegram_message(chat_id, "🧠 ВВЕДИ @USERNAME ДЛЯ ИИ-АНАЛИЗА")
+    if callback_data == "snos":
+        send_telegram_message(chat_id, "🎯 ВВЕДИ @USERNAME")
         CONFIG['awaiting_target'] = True
         CONFIG['awaiting_chat'] = chat_id
+        return
+    
+    if callback_data.startswith("reason_"):
+        reason = callback_data.split('_')[1]
+        target = CONFIG.get('temp_target', '')
+        send_telegram_message(chat_id, f"📡 ВЫБЕРИ МЕТОД СНОСА\n\n🎯 {target}\n🔥 {reason.upper()}", method_menu(target, reason))
+        return
+    
+    if callback_data.startswith("back_method_"):
+        _, _, target, reason = callback_data.split('_', 3)
+        send_telegram_message(chat_id, f"🎯 ВЫБЕРИ ПРИЧИНУ\n\n👤 {target}", TextTemplates.get_reason_menu())
+        return
+    
+    if callback_data.startswith("method_"):
+        parts = callback_data.split('_')
+        method = parts[1]
+        target = parts[2]
+        reason = parts[3]
+        send_telegram_message(chat_id, f"💥 ВЫБЕРИ КОЛИЧЕСТВО\n\n🎯 {target}\n🔥 {reason.upper()}\n📡 {method.upper()}", repeats_menu(target, reason, method))
         return
     
     if callback_data == "stats":
@@ -525,8 +480,7 @@ def process_callback(chat_id, callback_data):
         msg = "📜 ПОСЛЕДНИЕ 10 СНОСОВ\n\n"
         for i, h in enumerate(reversed(CONFIG['history'][-10:]), 1):
             status = "✅" if h.get('destroyed', False) else "❌"
-            reason = h.get('reason', 'unknown').upper()
-            msg += f"{i}. {h['target']} [{reason}] — {h['success']:,}/{h['total']:,} {status}\n"
+            msg += f"{i}. {h['target']} [{h.get('method', 'all')}] — {h['success']:,}/{h['total']:,} {status}\n"
         send_telegram_message(chat_id, msg)
         return
     
@@ -540,7 +494,7 @@ def process_callback(chat_id, callback_data):
         msg = "📋 ПОЛНЫЕ ЛОГИ\n\n"
         for h in CONFIG['history'][-10:]:
             status = "✅ УНИЧТОЖЕН" if h.get('destroyed', False) else "❌ ВЫЖИЛ"
-            msg += f"• {h['time']} | {h['target']} | {h.get('reason', 'unknown')} | {h['success']:,}/{h['total']:,} | {status}\n"
+            msg += f"• {h['time']} | {h['target']} | {h.get('method', 'all')} | {h['success']:,}/{h['total']:,} | {status}\n"
         send_telegram_message(chat_id, msg)
         return
     
@@ -566,15 +520,18 @@ def process_callback(chat_id, callback_data):
         return
     
     if callback_data == "toggle_threads":
-        options = [50, 100, 150, 200, 300, 500]
+        options = [50, 100, 200, 300, 500]
         current = CONFIG['threads']
         CONFIG['threads'] = options[(options.index(current) + 1) % len(options)] if current in options else options[0]
         send_telegram_message(chat_id, f"✅ ПОТОКОВ: {CONFIG['threads']}", settings_menu())
         return
     
     if callback_data.startswith("run_"):
-        target = callback_data.split('_')[1]
-        repeats = int(callback_data.split('_')[2])
+        parts = callback_data.split('_')
+        target = parts[1]
+        reason = parts[2]
+        method = parts[3]
+        repeats = int(parts[4])
         
         if CONFIG['attack_running']:
             send_telegram_message(chat_id, "⚠️ СНОС УЖЕ ИДЕТ")
@@ -583,10 +540,10 @@ def process_callback(chat_id, callback_data):
         CONFIG['attack_running'] = True
         CONFIG['current_target'] = target
         
-        send_telegram_message(chat_id, f"🧠 ИИ-СНОС ЗАПУЩЕН\n🎯 {target}\n💥 {repeats:,}")
+        send_telegram_message(chat_id, f"💥 СНОС ЗАПУЩЕН\n🎯 {target}\n🔥 {reason.upper()}\n📡 {method.upper()}\n💥 {repeats:,}")
         
         def run():
-            SnosEngine.smart_snos_target(target, "account", repeats)
+            MultiChannelSnos.multi_snos(target, reason, repeats, method)
             CONFIG['attack_running'] = False
         
         threading.Thread(target=run, daemon=True).start()
@@ -608,16 +565,10 @@ def process_text(chat_id, text):
     if CONFIG.get('awaiting_target', False):
         CONFIG['awaiting_target'] = False
         target = text
+        CONFIG['temp_target'] = target
         
-        # Показываем меню с количеством
-        msg = f"""
-🧠 <b>ИИ-АНАЛИЗ ЦЕЛИ</b>
-
-🎯 ЦЕЛЬ: {target}
-
-<b>ВЫБЕРИ КОЛИЧЕСТВО ЖАЛОБ:</b>
-        """
-        send_telegram_message(chat_id, msg, repeats_menu(target))
+        msg = f"🎯 <b>ВЫБЕРИ ПРИЧИНУ</b>\n\n👤 {target}"
+        send_telegram_message(chat_id, msg, TextTemplates.get_reason_menu())
         return
     
     if text.startswith('/start'):
@@ -627,15 +578,15 @@ def process_text(chat_id, text):
         elif role == "guest":
             send_telegram_message(chat_id, "👤 ДОБРО ПОЖАЛОВАТЬ", main_menu("guest"))
         else:
-            send_telegram_message(chat_id, "☢️ CYBERTEAM AI SNOSER\n\nВыберите роль:", role_menu())
+            send_telegram_message(chat_id, "☢️ CYBERTEAM SNOSER\n\nВыберите роль:", role_menu())
         return
 
 # ===================================================================
 # ПОЛЛИНГ БОТА
 # ===================================================================
 def polling_bot():
-    print("🤖 AI БОТ ЗАПУЩЕН")
-    print("🧠 РЕЖИМ: ИИ-АНАЛИЗ ЧЕРЕЗ NVIDIA")
+    print("🤖 БОТ ЗАПУЩЕН")
+    print("📡 МНОГОКАНАЛЬНЫЙ РЕЖИМ")
     
     while True:
         try:
@@ -679,14 +630,14 @@ def polling_bot():
 # ЗАПУСК
 # ===================================================================
 if __name__ == "__main__":
-    print("\n☢️ CYBERTEAM AI SNOSER v21.0")
-    print("🧠 ИИ-АНАЛИЗ: NVIDIA NEMOTRON")
+    print("\n☢️ CYBERTEAM SNOSER v23.0")
+    print("📡 МНОГОКАНАЛЬНЫЙ СНОС")
     print("=" * 60)
-    
-    # Проверяем ИИ
-    print("🧠 ТЕСТ ИИ...")
-    test_result = AIAnalyzer().analyze_text("Это тестовый текст без нарушений.")
-    print(f"✅ ИИ РАБОТАЕТ: {test_result}")
+    print("🔥 МЕТОДЫ СНОСА:")
+    print("  1. 🌐 ВСЕ МЕТОДЫ (форма + номера + почты)")
+    print("  2. 📝 ТОЛЬКО ФОРМА")
+    print("  3. 📱 ТОЛЬКО НОМЕРА")
+    print("  4. ✉️ ТОЛЬКО ПОЧТЫ")
     print("=" * 60)
     
     bot_thread = threading.Thread(target=polling_bot, daemon=True)
